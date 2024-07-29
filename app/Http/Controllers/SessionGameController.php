@@ -581,13 +581,22 @@ class SessionGameController extends Controller
         $players = Player::where('PlayerInfo_ID', $playerInfoId)->with('playerInfo', 'team')->get();
 
         if ($players->isEmpty()) {
-            return response()->json(['error' => 'No players found for this PlayerInfo_ID'], 404);
+            $playerInfo = PlayerInfo::find($playerInfoId);
+
+            return response()->json([
+                'Player_Name' => $playerInfo->Player_Name,
+                'PlayerInfo_ID' => $playerInfo->PlayerInfo_ID,
+                // 'Player_Name' => $playerInfo['Player_Name'],
+                'Data' => [],
+            ]);
         }
 
         $playerInfo = [
             'PlayerInfo_ID' => $playerInfoId,
             'Player_Name' => $players->first()->playerInfo->Player_Name ?? 'N/A',
         ];
+
+        
 
         $sessions = [];
 

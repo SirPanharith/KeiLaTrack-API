@@ -71,13 +71,43 @@ class PlayerInfoAPIController extends Controller
 
     public function show($id)
     {
-        $player = PlayerInfo::find($id);
+        $playerInfo = PlayerInfo::with('player.team', 'player.primaryPosition', 'player.secondaryPosition')->find($id);
 
-        if (!$player) {
+        if (!$playerInfo) {
             return response()->json(['message' => 'Player not found'], 404);
         }
 
-        return response()->json($player);
+        // Prepare the response data
+        $playerData = [
+            'PlayerInfo_ID' => $playerInfo->PlayerInfo_ID,
+            'Player_Name' => $playerInfo->Player_Name,
+            'Player_Email' => $playerInfo->Player_Email,
+            'Player_Password' => $playerInfo->Player_Password,
+            'PlayerInfo_Image' => $playerInfo->PlayerInfo_Image,
+            'created_at' => $playerInfo->created_at,
+            'updated_at' => $playerInfo->updated_at,
+        ];
+
+        $players = $playerInfo->player;
+        $playerDetails = [];
+
+        if ($players) {
+            foreach ($players as $player) {
+                $playerDetails[] = [
+                    'Player_ID' => $player->Player_ID,
+                    'Team' => $player->team->Team_Name ?? null,
+                    'PrimaryPosition' => $player->primaryPosition->Position ?? null,
+                    'SecondaryPosition' => $player->secondaryPosition->Position ?? null,
+                ];
+            }
+        }
+
+        $responseData = [
+            'player_info' => $playerData,
+            'players' => $playerDetails,
+        ];
+
+        return response()->json($responseData);
     }
 
   
@@ -121,4 +151,45 @@ class PlayerInfoAPIController extends Controller
 
         return response()->json(['message' => 'Player deleted'], 200);
     }
+
+    public function updatePlayerInfo(Request $request, $id)
+    {
+        $request->validate([
+            'Player_Name' => 'required|string|max:255',
+            'current_password' => 'required|string',
+            'new_password' => 'required|string|min:8',
+            'PlayerInfo_Image' => 'nullable|url', // Validate as a URL
+        ]);
+
+        $player = PlayerInfo::find($id);
+
+        if (!$player) {
+            return response()->json(['message' => 'Player not found'], 404);
+        }
+
+        // Check if the current password matches
+        if (!Hash::check($request->current_password, $player->Player_Password)) {
+            return response()->json(['message' => 'Current password is incorrect'], 400);
+        }
+
+        // Update player name
+        $player->Player_Name = $request->Player_Name;
+
+        // Update player password if new password is provided
+        if ($request->new_password) {
+            $player->Player_Password = Hash::make($request->new_password);
+        }
+
+        // Update player image if provided as URL
+        if ($request->PlayerInfo_Image) {
+            $player->PlayerInfo_Image = $request->PlayerInfo_Image;
+        }
+
+        $player->save();
+
+        return response()->json($player, 200);
+    }
+
+
+
 }

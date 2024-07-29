@@ -35,4 +35,9 @@ class PlayerInfo extends Model
     {
         return $this->hasMany(TeamInvitation::class, 'PlayerInfo_ID', 'PlayerInfo_ID');
     }
+    
+    public function player()
+    {
+        return $this->hasMany(Player::class, 'PlayerInfo_ID', 'PlayerInfo_ID');
+    }
 }

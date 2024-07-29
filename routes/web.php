@@ -5,6 +5,8 @@ use App\Http\Controllers\PlayerController;
 //use App\Http\Controllers\InvitationController;
 use App\Http\Controllers\TeamInvitationController;
 use App\Http\Controllers\SessionGameController;
+use App\Http\Controllers\ForgotPasswordController;
+use Illuminate\Support\Facades\Mail;
 
 /*
 |--------------------------------------------------------------------------
@@ -52,3 +54,17 @@ Route::resource('session-games', SessionGameController::class);
 Route::get('/session-invitation/{token}', [SessionGameController::class, 'showInvitation']);
 Route::post('/session-invitation/{token}/accept', [SessionGameController::class, 'acceptInvitation']);
 Route::post('/session-invitation/{token}/reject', [SessionGameController::class, 'rejectInvitation']);
+
+Route::get('password/forgot', [ForgotPasswordController::class, 'showForgetPasswordForm'])->name('password.request');
+Route::post('password/forgot', [ForgotPasswordController::class, 'submitForgetPasswordForm'])->name('password.email');
+Route::get('password/reset', [ForgotPasswordController::class, 'showResetPasswordForm'])->name('password.reset');
+Route::post('password/reset', [ForgotPasswordController::class, 'submitResetPasswordForm'])->name('password.update');
+
+Route::get('/test-email', function () {
+    Mail::raw('This is a test email', function ($message) {
+        $message->to('your_email@gmail.com')
+                ->subject('Test Email');
+    });
+
+    return 'Email sent!';
+});

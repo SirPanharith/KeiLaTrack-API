@@ -20,6 +20,8 @@ use App\Http\Controllers\InvitationController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\HomeAssistController;
 use App\Http\Controllers\PlayerNoteController;
+use App\Http\Controllers\ForgotPasswordController;
+
 
 /*
 |--------------------------------------------------------------------------
@@ -190,3 +192,16 @@ Route::get('player-notes/player/{playerId}', [PlayerNoteController::class, 'getN
 Route::get('player-notes/session/{sessionId}', [PlayerNoteController::class, 'getNotesBySession']);
 Route::post('/update-note', [PlayerNoteController::class, 'updateNoteBySessionAndPlayer']);
 Route::get('/player-notes/{sessionId}/{playerId}', [PlayerNoteController::class, 'getNoteBySessionAndPlayer']);
+
+// Route::get('password/forgot', [ForgotPasswordController::class, 'showForgetPasswordForm'])->name('password.request');
+// Route::post('password/forgot', [ForgotPasswordController::class, 'submitForgetPasswordForm'])->name('password.email');
+// Route::get('password/reset', [ForgotPasswordController::class, 'showResetPasswordForm'])->name('password.reset');
+// Route::post('password/reset', [ForgotPasswordController::class, 'submitResetPasswordForm'])->name('password.update');
+
+Route::post('password/forgot', [ForgotPasswordController::class, 'submitForgetPasswordForm']);
+Route::post('password/reset', [ForgotPasswordController::class, 'submitResetPasswordForm']);
+Route::post('host/password/forgot', [ForgotPasswordController::class, 'submitForgetHostPasswordForm']);
+Route::post('host/password/reset', [ForgotPasswordController::class, 'submitResetHostPasswordForm']);
+
+Route::put('/playersinfo/update/{id}', [PlayerInfoAPIController::class, 'updatePlayerInfo']);
+
