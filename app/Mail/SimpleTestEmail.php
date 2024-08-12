@@ -29,7 +29,8 @@ class SimpleTestEmail extends Mailable
      */
     public function build()
     {
-        return $this->view('emails.simple_test')
+        return $this->subject('Football Team Invitation')
+                    ->view('emails.simple_test')
                     ->with('link', $this->link);
     }
 }

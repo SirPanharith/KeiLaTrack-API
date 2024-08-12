@@ -5,6 +5,8 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Laravel\Sanctum\HasApiTokens;
+use Illuminate\Support\Facades\Storage;
+
 
 class PlayerInfo extends Model
 {
@@ -39,5 +41,10 @@ class PlayerInfo extends Model
     public function player()
     {
         return $this->hasMany(Player::class, 'PlayerInfo_ID', 'PlayerInfo_ID');
+    }
+
+    public function getPlayerInfoImageAttribute($value)
+    {
+        return $value ? Storage::disk('spaces')->url($value) : null;
     }
 }

@@ -48,9 +48,29 @@ class ManualPlayerController extends Controller
     }
 
     
-    public function destroy(ManualPlayer $manualPlayer)
+    public function destroy($id)
     {
+        // Find the manual player by ID
+        $manualPlayer = ManualPlayer::findOrFail($id);
+
+        // Delete related home scores
+        $manualPlayer->homeScores()->delete();
+
+        // Delete related match summaries
+        $manualPlayer->matchSummaries()->delete();
+
+        // Delete related substitutions
+        $manualPlayer->substitutions()->delete();
+
+        // Delete related home assists
+        $manualPlayer->homeAssists()->delete();
+
+        // Delete the manual player record from the database
         $manualPlayer->delete();
-        return response()->json(null, 204);
+
+        // Return a successful response
+        return response()->json(['message' => 'Manual player and related records deleted successfully'], 200);
     }
+
+
 }

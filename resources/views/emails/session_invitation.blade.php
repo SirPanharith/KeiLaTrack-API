@@ -8,6 +8,6 @@
 <body>
     <h1>You have been invited to a session</h1>
     <p>Please click the link below to view the session details and respond:</p>
-    <p><a href="{{ $link }}">{{ $link }}</a></p>
+    <p><a href="{{ $link }}">View Session Details</a></p>
 </body>
 </html>

@@ -99,7 +99,7 @@ class PlayerNoteController extends Controller
     if ($playerNote) {
         return response()->json($playerNote);
     } else {
-        return response()->json(['PlayerNote' => '(--- Click here to add notes ---)']);
+        return response()->json(['PlayerNote' => '(Add your note)']);
     }
 }
 

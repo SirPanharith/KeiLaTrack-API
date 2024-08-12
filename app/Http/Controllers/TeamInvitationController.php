@@ -115,16 +115,22 @@ class TeamInvitationController extends Controller
         // Fetch the player info
         $player = PlayerInfo::where('PlayerInfo_ID', $invitation->PlayerInfo_ID)->first();
 
+        // Fetch the team details
+        $team = $invitation->team;
+
         // Show the form
         return view('invite', [
             'email' => $player->Player_Email,
             'name' => $player->Player_Name,
             'player_id' => $player->PlayerInfo_ID,
             'team_id' => $invitation->Team_ID,
+            'team_name' => $team->Team_Name ?? 'N/A', // Add the team name to the response
+            'team_detail' => $team->Team_Detail ?? 'N/A', // Add the team detail to the response
             'invitation_id' => $invitation->TeamInvitation_ID, // Pass the TeamInvitation_ID to the view
             'token' => $token
         ]);
     }
+
 
     public function submitInvitationForm(Request $request, $token)
     {

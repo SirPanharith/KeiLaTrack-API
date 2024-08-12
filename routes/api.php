@@ -78,7 +78,7 @@ Route::delete('/teams/{id}', [TeamController::class, 'destroy']);
 Route::get('/teams/{teamId}/players', [TeamController::class, 'getPlayersByTeam']);
 
 //Date and Time of the Upcoming Session
-Route::get('/session-games/team/{teamId}/datetime', [SessionGameController::class, 'getSessionDateTimeByTeam']);
+// Route::get('/session-games/team/{teamId}/datetime', [SessionGameController::class, 'getSessionDateTimeByTeam']);
 
 
 Route::get('/team-invitations', [TeamInvitationController::class, 'index']);
@@ -198,10 +198,30 @@ Route::get('/player-notes/{sessionId}/{playerId}', [PlayerNoteController::class,
 // Route::get('password/reset', [ForgotPasswordController::class, 'showResetPasswordForm'])->name('password.reset');
 // Route::post('password/reset', [ForgotPasswordController::class, 'submitResetPasswordForm'])->name('password.update');
 
+//OTP for forgot password
 Route::post('password/forgot', [ForgotPasswordController::class, 'submitForgetPasswordForm']);
 Route::post('password/reset', [ForgotPasswordController::class, 'submitResetPasswordForm']);
 Route::post('host/password/forgot', [ForgotPasswordController::class, 'submitForgetHostPasswordForm']);
 Route::post('host/password/reset', [ForgotPasswordController::class, 'submitResetHostPasswordForm']);
 
-Route::put('/playersinfo/update/{id}', [PlayerInfoAPIController::class, 'updatePlayerInfo']);
+//Update PlayerImage
+Route::post('/playersinfo/update/{id}', [PlayerInfoAPIController::class, 'updatePlayerImage']);
+
+//Update Player Name and Password
+Route::put('playersinfo/update-credentials/{id}', [PlayerInfoAPIController::class, 'updatePlayerCredentials']);
+
+//Update HostImage
+Route::post('hosts/update/{id}', [HostAPIController::class, 'updateHostImage']);
+
+//Update Host Name and Password
+Route::put('hosts/update-credentials/{id}', [HostAPIController::class, 'updateHostCredentials']);
+
+////Update Response ID in Upcoming session in mobile
+Route::put('sessions/{sessionId}/players/{playerInfoId}/update-response', [SessionGameController::class, 'updateInvitationResponse']);
+
+////display the session on upcoming session list
+Route::get('/session-games/team/{teamId}/datetime', [SessionGameController::class, 'getSessionsByTeamIdWithStatus2']);
+
+
+
 

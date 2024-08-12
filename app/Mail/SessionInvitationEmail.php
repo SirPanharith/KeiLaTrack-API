@@ -29,7 +29,8 @@ class SessionInvitationEmail extends Mailable
      */
     public function build()
     {
-        return $this->view('emails.session_invitation')
+        return $this->subject('Football Session Invitation')
+                    ->view('emails.session_invitation')
                     ->with('link', $this->link);
     }
 }

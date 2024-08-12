@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use App\Models\PlayerInfo;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\ValidationException;
 
@@ -152,13 +153,48 @@ class PlayerInfoAPIController extends Controller
         return response()->json(['message' => 'Player deleted'], 200);
     }
 
-    public function updatePlayerInfo(Request $request, $id)
+    // public function updatePlayerInfo(Request $request, $id)
+    // {
+    //     $request->validate([
+    //         'Player_Name' => 'required|string|max:255',
+    //         'current_password' => 'required|string',
+    //         'new_password' => 'required|string|min:8',
+    //         'PlayerInfo_Image' => 'nullable|url', // Validate as a URL
+    //     ]);
+
+    //     $player = PlayerInfo::find($id);
+
+    //     if (!$player) {
+    //         return response()->json(['message' => 'Player not found'], 404);
+    //     }
+
+    //     // Check if the current password matches
+    //     if (!Hash::check($request->current_password, $player->Player_Password)) {
+    //         return response()->json(['message' => 'Current password is incorrect'], 400);
+    //     }
+
+    //     // Update player name
+    //     $player->Player_Name = $request->Player_Name;
+
+    //     // Update player password if new password is provided
+    //     if ($request->new_password) {
+    //         $player->Player_Password = Hash::make($request->new_password);
+    //     }
+
+    //     // Update player image if provided as URL
+    //     if ($request->PlayerInfo_Image) {
+    //         $player->PlayerInfo_Image = $request->PlayerInfo_Image;
+    //     }
+
+    //     $player->save();
+
+    //     return response()->json($player, 200);
+    // }
+
+    public function updatePlayerImage(Request $request, $id)
     {
         $request->validate([
-            'Player_Name' => 'required|string|max:255',
-            'current_password' => 'required|string',
-            'new_password' => 'required|string|min:8',
-            'PlayerInfo_Image' => 'nullable|url', // Validate as a URL
+            'PlayerInfo_Image' => 'required|file|mimes:jpeg,png,jpg,gif,svg|max:2048', // Validate as a file
         ]);
 
         $player = PlayerInfo::find($id);
@@ -167,28 +203,70 @@ class PlayerInfoAPIController extends Controller
             return response()->json(['message' => 'Player not found'], 404);
         }
 
-        // Check if the current password matches
-        if (!Hash::check($request->current_password, $player->Player_Password)) {
-            return response()->json(['message' => 'Current password is incorrect'], 400);
+        // Handle file upload
+        if ($request->hasFile('PlayerInfo_Image')) {
+            $file = $request->file('PlayerInfo_Image');
+            $path = $file->store('PlayerUser', 'spaces'); // Store file in DigitalOcean Spaces
+
+            // Save the path to the database
+            $player->PlayerInfo_Image = $path;
+            $player->save();
+
+            // Return the full image URL
+            $fullImageUrl = 'https://keilatrack.sgp1.cdn.digitaloceanspaces.com/' . $path;
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Player image updated successfully',
+                'image_url' => $path
+            ], 200);
         }
 
-        // Update player name
-        $player->Player_Name = $request->Player_Name;
+        return response()->json(['message' => 'No image uploaded'], 400);
+    }
 
-        // Update player password if new password is provided
-        if ($request->new_password) {
+
+
+
+
+    public function updatePlayerCredentials(Request $request, $id)
+    {
+        $request->validate([
+            'Player_Name' => 'nullable|string|max:255',
+            'current_password' => 'nullable|string',
+            'new_password' => 'nullable|string|min:8|required_with:current_password',
+        ]);
+
+        $player = PlayerInfo::find($id);
+
+        if (!$player) {
+            return response()->json(['success' => false, 'message' => 'Player not found'], 404);
+        }
+
+        // Check if the current password matches
+        if ($request->filled('current_password') && $request->filled('new_password')) {
+            if (!Hash::check($request->current_password, $player->Player_Password)) {
+                return response()->json(['success' => false, 'message' => 'Current password is incorrect'], 400);
+            }
+            // Update player password if new password is provided
             $player->Player_Password = Hash::make($request->new_password);
         }
 
-        // Update player image if provided as URL
-        if ($request->PlayerInfo_Image) {
-            $player->PlayerInfo_Image = $request->PlayerInfo_Image;
+        // Update player name if provided
+        if ($request->filled('Player_Name')) {
+            $player->Player_Name = $request->Player_Name;
         }
 
         $player->save();
 
-        return response()->json($player, 200);
+        return response()->json([
+            'success' => true,
+            'message' => 'Player information updated successfully',
+            'Player_Name' => $player->Player_Name,
+        ], 200);
     }
+
+
 
 
 

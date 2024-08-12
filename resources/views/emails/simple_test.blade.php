@@ -4,8 +4,8 @@
     <title>Team Invitation</title>
 </head>
 <body>
-    <h1>Team Invitation</h1>
+    <h1>You have been invited to a Football Team</h1>
     <p>You have been invited to join the team. Click the link below to accept the invitation and fill in your details:</p>
-    <a href="{{ $link }}">Accept Invitation</a>
+    <a href="{{ $link }}">View Team Information</a>
 </body>
 </html>

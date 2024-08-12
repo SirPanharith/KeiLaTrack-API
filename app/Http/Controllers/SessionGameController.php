@@ -63,15 +63,19 @@ class SessionGameController extends Controller
     public function showInvitation($token)
     {
         $invitation = SessionInvitation::where('token', $token)->firstOrFail();
+        $sessionGame = $invitation->sessionGame;
+        $team = $sessionGame->team;
 
         return view('sessioninvitation', [
             'token' => $token,
             'email' => $invitation->playerInfo->Player_Email,
-            'date' => $invitation->sessionGame->Session_Date,
-            'time' => $invitation->sessionGame->Session_Time,
-            'duration' => $invitation->sessionGame->Session_Duration,
-            'location' => $invitation->sessionGame->Session_Location,
+            'date' => $sessionGame->Session_Date,
+            'time' => $sessionGame->Session_Time,
+            'duration' => $sessionGame->Session_Duration,
+            'location' => $sessionGame->Session_Location,
+            'note' => $sessionGame->Session_Note,
             'mode' => '5 vs 5', // Adjust as necessary
+            'team_name' => $team->Team_Name ?? 'N/A', // Add the team name to the response
         ]);
     }
 
@@ -173,10 +177,31 @@ class SessionGameController extends Controller
     // Remove the specified session game
     public function destroy($id)
     {
-        $sessionGame = SessionGame::findOrFail($id);
-        $sessionGame->delete();
-        return response()->json(null, 204);
+        try {
+            // Find the session game
+            $sessionGame = SessionGame::findOrFail($id);
+
+            // Delete related records in the associated tables
+            $sessionGame->settings()->delete();
+            $sessionGame->scoreBoard()->delete();
+            $sessionGame->sessionInvitations()->delete();
+            $sessionGame->manualPlayers()->delete();
+            $sessionGame->homeScores()->delete();
+            $sessionGame->awayScores()->delete();
+            $sessionGame->substitutions()->delete();
+            $sessionGame->matchSummaries()->delete();
+            $sessionGame->playerNotes()->delete();
+
+            // Finally, delete the session game
+            $sessionGame->delete();
+
+            return response()->json(['message' => 'Session game deleted successfully'], 204);
+        } catch (\Exception $e) {
+            // Handle the exception and return an error response
+            return response()->json(['error' => $e->getMessage()], 500);
+        }
     }
+
 
     public function getSessionGamesByPlayer($playerId)
 {
@@ -309,6 +334,7 @@ class SessionGameController extends Controller
                 if ($sessionInvitation && $sessionInvitation->Response_ID == 1) {
                     return [
                         'Player_ID' => $player->Player_ID,
+                        'PlayerInfo_ID' => $player->playerInfo->PlayerInfo_ID,
                         'Player_Name' => $player->playerInfo->Player_Name ?? 'N/A',
                         'Player_Email' => $player->playerInfo->Player_Email ?? 'N/A',
                         'Player_Image' => $player->playerInfo->PlayerInfo_Image ?? 'N/A',
@@ -459,14 +485,15 @@ class SessionGameController extends Controller
     public function getSessionsByTeamId($teamId)
     {
         try {
-            // Get all session games for the given Team_ID
+            // Get all session games for the given Team_ID and SessionStatus_ID = 1
             $sessionGames = SessionGame::with(['team', 'settings', 'scoreBoard'])
                 ->where('Team_ID', $teamId)
+                ->where('SessionStatus_ID', 1) // Filter by SessionStatus_ID = 1
                 ->get();
 
             // Check if there are any session games
             if ($sessionGames->isEmpty()) {
-                return response()->json(['message' => 'No sessions found for this team'], 404);
+                return response()->json(['message' => 'No sessions found for this team with status 1'], 404);
             }
 
             // Create an instance of HomeScoreController to use the calculateSessionTotalGoals method
@@ -483,7 +510,9 @@ class SessionGameController extends Controller
                     'Session_Time' => $sessionGame->Session_Time,
                     'Session_Location' => $sessionGame->Session_Location,
                     'Session_Note' => $sessionGame->Session_Note,
+                    'Team_ID' => $sessionGame->team->Team_ID,
                     'Team_Name' => $sessionGame->team->Team_Name ?? 'N/A',
+                    'SessionStatus_ID' => $sessionGame->SessionStatus_ID,
                     'Session_Total_Goals' => $sessionTotalGoals,
                     'ManualAway_Name' => $sessionGame->ManualAway_Name,
                     'ManualAway_Score' => $sessionGame->ManualAway_Score,
@@ -498,6 +527,54 @@ class SessionGameController extends Controller
             return response()->json(['error' => $e->getMessage()], 500);
         }
     }
+
+    public function getSessionsByTeamIdWithStatus2($teamId)
+    {
+        try {
+            // Get all session games for the given Team_ID and SessionStatus_ID = 2
+            $sessionGames = SessionGame::with(['team', 'settings', 'scoreBoard'])
+                ->where('Team_ID', $teamId)
+                ->where('SessionStatus_ID', 2) // Filter by SessionStatus_ID = 2
+                ->get();
+
+            // Check if there are any session games
+            if ($sessionGames->isEmpty()) {
+                return response()->json(['message' => 'No sessions found for this team with status 2'], 404);
+            }
+
+            // Create an instance of HomeScoreController to use the calculateSessionTotalGoals method
+            $homeScoreController = new HomeScoreController();
+
+            // Format the session games data
+            $result = $sessionGames->map(function ($sessionGame) use ($homeScoreController) {
+                $sessionTotalGoals = $homeScoreController->calculateSessionTotalGoals($sessionGame->Session_ID);
+
+                return [
+                    'Session_ID' => $sessionGame->Session_ID,
+                    'Session_Date' => $sessionGame->Session_Date,
+                    'Session_Duration' => $sessionGame->Session_Duration,
+                    'Session_Time' => $sessionGame->Session_Time,
+                    'Session_Location' => $sessionGame->Session_Location,
+                    'Session_Note' => $sessionGame->Session_Note,
+                    'Team_ID' => $sessionGame->team->Team_ID,
+                    'Team_Name' => $sessionGame->team->Team_Name ?? 'N/A',
+                    'SessionStatus_ID' => $sessionGame->SessionStatus_ID,
+                    'Session_Total_Goals' => $sessionTotalGoals,
+                    'ManualAway_Name' => $sessionGame->ManualAway_Name,
+                    'ManualAway_Score' => $sessionGame->ManualAway_Score,
+                    'Settings' => $sessionGame->settings,
+                    'ScoreBoard' => $sessionGame->scoreBoard,
+                ];
+            });
+
+            return response()->json($result, 200);
+        } catch (\Exception $e) {
+            // Handle or log the exception
+            return response()->json(['error' => $e->getMessage()], 500);
+        }
+    }
+
+
 
     public function getSessionGameBySessionAndPlayer($sessionId, $playerId)
     {
@@ -634,7 +711,29 @@ class SessionGameController extends Controller
         ]);
     }
 
-    
+    //Update Response ID in Upcoming session in mobile
+    public function updateInvitationResponse(Request $request, $sessionId, $playerInfoId)
+    {
+        // Validate the request
+        $request->validate([
+            'Response_ID' => 'required|integer|in:1,2', // Assuming 1 is for accept and 2 is for reject
+        ]);
+
+        // Find the session invitation
+        $invitation = SessionInvitation::where('Session_ID', $sessionId)
+                        ->where('PlayerInfo_ID', $playerInfoId)
+                        ->firstOrFail();
+
+        // Update the Response_ID
+        $invitation->update(['Response_ID' => $request->Response_ID]);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Invitation response updated successfully',
+            'SessionInvitation_ID' => $invitation->SessionInvitation_ID,
+            'Response_ID' => $invitation->Response_ID,
+        ], 200);
+    }
 
 
 }
