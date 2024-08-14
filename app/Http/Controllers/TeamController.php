@@ -87,17 +87,17 @@ class TeamController extends Controller
     // Display all players based on Team_ID
     public function getPlayersByTeam($teamId)
     {
-        $players = Player::with(['playerInfo', 'primaryPosition', 'secondaryPosition'])
+        $players = Player::with(['PlayerInfo', 'PrimaryPosition', 'SecondaryPosition'])
                     ->where('Team_ID', $teamId)
                     ->get();
     
         $playerList = $players->map(function ($player) {
             return [
-                'Player_Name' => $player->playerInfo->Player_Name,
-                'Player_Email' => $player->playerInfo->Player_Email,
-                'PlayerInfo_Image' => $player->playerInfo->PlayerInfo_Image,
-                'Primary_Position' => $player->primaryPosition->Position,
-                'Secondary_Position' => $player->secondaryPosition->Position,
+                'Player_Name' => $player->PlayerInfo->Player_Name,
+                'Player_Email' => $player->PlayerInfo->Player_Email,
+                'PlayerInfo_Image' => $player->PlayerInfo->PlayerInfo_Image,
+                'Primary_Position' => $player->PrimaryPosition->Position,
+                'Secondary_Position' => $player->SecondaryPosition->Position,
             ];
         });
     
