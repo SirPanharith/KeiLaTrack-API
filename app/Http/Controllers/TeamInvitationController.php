@@ -64,8 +64,8 @@ class TeamInvitationController extends Controller
 {
     // Validate the incoming request
     $validated = $request->validate([
-        'Team_ID' => 'required|exists:team,Team_ID',
-        'Player_Email' => 'required|email|exists:playerinfo,Player_Email',
+        'Team_ID' => 'required|exists:Team,Team_ID',
+        'Player_Email' => 'required|email|exists:PlayerInfo,Player_Email',
     ]);
 
     // Find the PlayerInfo_ID using the Player_Email
