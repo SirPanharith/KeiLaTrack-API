@@ -17,15 +17,15 @@ class SettingController extends Controller
     {
         try {
             $validated = $request->validate([
-                'SubMode_ID' => 'required|exists:submode,SubMode_ID', // Ensure the SubMode_ID exists
-                'Session_ID' => 'required|exists:sessiongame,Session_ID', // Ensure the Session_ID exists
+                'SubMode_ID' => 'required|exists:SubMode,SubMode_ID', // Ensure the SubMode_ID exists
+                'Session_ID' => 'required|exists:SessionGame,Session_ID', // Ensure the Session_ID exists
                 'Sub_Timespace' => 'required|date_format:H:i:s',
-                'Divide_ID' => 'required|exists:divide,Divide_ID', // Ensure the Divide_ID exists
+                'Divide_ID' => 'required|exists:Divide,Divide_ID', // Ensure the Divide_ID exists
                 'S_Num' => 'required|integer',
                 'M_Num' => 'required|integer',
                 'D_Num' => 'required|integer',
                 'GK_Num' => 'required|integer',
-                'Side_ID' => 'required|exists:side,Side_ID', // Ensure the Side_ID exists
+                'Side_ID' => 'required|exists:Side,Side_ID', // Ensure the Side_ID exists
             ]);
 
             $setting = Setting::create($validated);
