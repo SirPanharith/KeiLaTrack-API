@@ -20,7 +20,7 @@ class HomeAssistController extends Controller
     {
         // Validate the incoming request
         $validated = $request->validate([
-            'Player_ID' => 'nullable|exists:player,Player_ID',
+            'Player_ID' => 'nullable|exists:Player,Player_ID',
             'ManualPlayer_ID' => 'nullable|exists:ManualPlayer,ManualPlayer_ID',
         ]);
 
