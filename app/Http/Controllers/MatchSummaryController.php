@@ -17,42 +17,42 @@ class MatchSummaryController extends Controller
 
     // Store a newly created resource in storage.
     public function store(Request $request)
-{
-    // Validate the incoming request
-    $request->validate([
-        'Session_ID' => 'required|integer|exists:sessiongame,Session_ID',
-        'Player_ID' => 'nullable|integer|exists:player,Player_ID',
-        'ManualPlayer_ID' => 'nullable|integer|exists:ManualPlayer,ManualPlayer_ID',
-        'Total_Goals' => 'required|integer',
-        'Total_Assists' => 'required|integer',
-        'Total_Duration' => 'required|date_format:H:i:s',
-    ]);
+    {
+        // Validate the incoming request
+        $request->validate([
+            'Session_ID' => 'required|integer|exists:SessionGame,Session_ID',
+            'Player_ID' => 'nullable|integer|exists:Player,Player_ID',
+            'ManualPlayer_ID' => 'nullable|integer|exists:ManualPlayer,ManualPlayer_ID',
+            'Total_Goals' => 'required|integer',
+            'Total_Assists' => 'required|integer',
+            'Total_Duration' => 'required|date_format:H:i:s',
+        ]);
 
-    // Ensure that either Player_ID or ManualPlayer_ID is provided, but not both
-    if (is_null($request->Player_ID) && is_null($request->ManualPlayer_ID)) {
-        return response()->json(['error' => 'Either Player_ID or ManualPlayer_ID must be provided'], 400);
-    }
+        // Ensure that either Player_ID or ManualPlayer_ID is provided, but not both
+        if (is_null($request->Player_ID) && is_null($request->ManualPlayer_ID)) {
+            return response()->json(['error' => 'Either Player_ID or ManualPlayer_ID must be provided'], 400);
+        }
 
-    if (!is_null($request->Player_ID) && !is_null($request->ManualPlayer_ID)) {
-        return response()->json(['error' => 'Only one of Player_ID or ManualPlayer_ID should be provided'], 400);
-    }
+        if (!is_null($request->Player_ID) && !is_null($request->ManualPlayer_ID)) {
+            return response()->json(['error' => 'Only one of Player_ID or ManualPlayer_ID should be provided'], 400);
+        }
 
-    // Create the MatchSummary record
-    $matchSummary = MatchSummary::create([
-        'Session_ID' => $request->Session_ID,
-        'Player_ID' => $request->Player_ID,
-        'ManualPlayer_ID' => $request->ManualPlayer_ID,
-        'Total_Goals' => $request->Total_Goals,
-        'Total_Assists' => $request->Total_Assists,
-        'Total_Duration' => $request->Total_Duration,
-    ]);
+        // Create the MatchSummary record
+        $matchSummary = MatchSummary::create([
+            'Session_ID' => $request->Session_ID,
+            'Player_ID' => $request->Player_ID,
+            'ManualPlayer_ID' => $request->ManualPlayer_ID,
+            'Total_Goals' => $request->Total_Goals,
+            'Total_Assists' => $request->Total_Assists,
+            'Total_Duration' => $request->Total_Duration,
+        ]);
 
-    // Return a 200 OK response with a success message
-    return response()->json([
-        'message' => 'Match summary created successfully',
-        'data' => $matchSummary
-    ], 200);
-}
+        // Return a 200 OK response with a success message
+        return response()->json([
+            'message' => 'Match summary created successfully',
+            'data' => $matchSummary
+        ], 200);
+    }   
 
 
 
