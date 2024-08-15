@@ -334,16 +334,16 @@ class SessionGameController extends Controller
                 if ($sessionInvitation && $sessionInvitation->Response_ID == 1) {
                     return [
                         'Player_ID' => $player->Player_ID,
-                        'PlayerInfo_ID' => $player->playerInfo->PlayerInfo_ID,
-                        'Player_Name' => $player->playerInfo->Player_Name ?? 'N/A',
-                        'Player_Email' => $player->playerInfo->Player_Email ?? 'N/A',
-                        'Player_Image' => $player->playerInfo->PlayerInfo_Image ?? 'N/A',
+                        'PlayerInfo_ID' => $player->PlayerInfo->PlayerInfo_ID,
+                        'Player_Name' => $player->PlayerInfo->Player_Name ?? 'N/A',
+                        'Player_Email' => $player->PlayerInfo->Player_Email ?? 'N/A',
+                        'Player_Image' => $player->PlayerInfo->PlayerInfo_Image ?? 'N/A',
                         'PrimaryPosition_ID' => $player->PrimaryPosition_ID,
-                        'PrimaryPosition_Name' => $player->primaryPosition->Position ?? 'N/A',
+                        'PrimaryPosition_Name' => $player->PrimaryPosition->Position ?? 'N/A',
                         'SecondaryPosition_ID' => $player->SecondaryPosition_ID,
-                        'SecondaryPosition_Name' => $player->secondaryPosition->Position ?? 'N/A',
+                        'SecondaryPosition_Name' => $player->SecondaryPosition->Position ?? 'N/A',
                         'Response_ID' => $sessionInvitation->Response_ID,
-                        'Response' => $sessionInvitation->response->Response,
+                        'Response' => $sessionInvitation->Response->Response,
                     ];
                 }
     
