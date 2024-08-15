@@ -84,7 +84,7 @@ class SessionGameController extends Controller
     {
         $invitation = SessionInvitation::where('token', $token)->firstOrFail();
         $invitation->update(['Response_ID' => 1]); // 1 means accepted
-        return redirect('/')->with('success', 'You have successfully accepted the invitation.');
+        return redirect('/session-invitation-success')->with('success', 'You have successfully accepted the invitation.');
     }
 
     // Reject the invitation

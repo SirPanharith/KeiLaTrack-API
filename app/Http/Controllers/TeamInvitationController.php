@@ -161,7 +161,7 @@ class TeamInvitationController extends Controller
         // Optionally, delete the invitation or mark it as used
         $invitation->delete();
 
-        return redirect('/')->with('success', 'You have successfully joined the team!');
+        return redirect('/team-invitation-success')->with('success', 'You have successfully joined the team!');
     }
 
     public function showSpecificInvitation($id)
