@@ -16,11 +16,11 @@ class HomeScoreController extends Controller
     public function store(Request $request)
     {
         $validatedData = $request->validate([
-            'Player_ID' => 'nullable|exists:player,Player_ID',
+            'Player_ID' => 'nullable|exists:Player,Player_ID',
             'ManualPlayer_ID' => 'nullable|exists:ManualPlayer,ManualPlayer_ID',
-            'HomeAssist_ID' => 'nullable|exists:homeassist,HomeAssist_ID',
+            'HomeAssist_ID' => 'nullable|exists:HomeAssist,HomeAssist_ID',
             'ScoreTime' => 'required|date_format:H:i:s',
-            'Session_ID' => 'required|exists:sessiongame,Session_ID',
+            'Session_ID' => 'required|exists:SessionGame,Session_ID',
         ]);
 
         if (is_null($request->Player_ID) && is_null($request->ManualPlayer_ID)) {

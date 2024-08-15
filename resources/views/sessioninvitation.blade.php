@@ -117,10 +117,10 @@
                 @csrf
                 <button type="submit" class="btn accept text-white font-bold">Accept</button>
             </form>
-            <form action="{{ url('/session-invitation/' . $token . '/reject') }}" method="POST">
+            <!-- <form action="{{ url('/session-invitation/' . $token . '/reject') }}" method="POST">
                 @csrf
                 <button type="submit" class="btn reject text-white font-bold">Reject</button>
-            </form>
+            </form> -->
         </div>
     </div>
 </body>

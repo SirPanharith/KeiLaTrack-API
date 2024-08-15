@@ -114,7 +114,7 @@
             </div>
             <div class="flex justify-between">
                 <button type="submit" class="btn accept text-white font-bold">Accept</button>
-                <button type="button" class="btn reject text-white font-bold">Reject</button>
+                <!-- <button type="button" class="btn reject text-white font-bold">Reject</button> -->
             </div>
         </form>
     </div>
