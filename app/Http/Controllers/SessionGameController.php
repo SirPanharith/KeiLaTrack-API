@@ -157,20 +157,17 @@ class SessionGameController extends Controller
     // Update the specified session game
     public function update(Request $request, $id)
     {
-        $sessionGame = SessionGame::findOrFail($id);
-
+        // Validate the request to only allow updating SessionStatus_ID
         $validated = $request->validate([
-            'Session_Date' => 'date',
-            'Session_Duration' => 'string',
-            'Session_Time' => 'string',
-            'Session_Location' => 'string',
-            'Session_Note' => 'string',
-            'Team_ID' => 'numeric',
-            'ManualAway_Name' => 'nullable|string',
-            'ManualAway_Score' => 'nullable|integer',
+            'SessionStatus_ID' => 'required|integer|exists:SessionStatus,SessionStatus_ID',
         ]);
 
-        $sessionGame->update($validated);
+        // Find the session game by its ID
+        $sessionGame = SessionGame::findOrFail($id);
+
+        // Update only the SessionStatus_ID
+        $sessionGame->update(['SessionStatus_ID' => $validated['SessionStatus_ID']]);
+
         return response()->json($sessionGame);
     }
 

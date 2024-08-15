@@ -44,6 +44,15 @@ Route::post('/team-invitations/email/{token}', [TeamInvitationController::class,
 // Route to display the invitation form when the link is clicked
 Route::get('/accept-invitation/{token}', [TeamInvitationController::class, 'showInvitationForm']);
 Route::post('/accept-invitation/{token}', [TeamInvitationController::class, 'submitInvitationForm']);
+// Route after accept the session Invitation
+Route::get('/session-invitation-success', function () {
+    return view('acceptedsessioninvitation');
+});
+// Route after accept the Team Invitation
+Route::get('/team-invitation-success', function () {
+    return view('acceptedteaminvitation');
+});
+
 
 // Route to show a specific team invitation
 Route::get('/team-invitations/{id}', [TeamInvitationController::class, 'showSpecificInvitation']);
