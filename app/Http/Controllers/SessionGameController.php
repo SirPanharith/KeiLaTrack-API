@@ -383,6 +383,7 @@ class SessionGameController extends Controller
                 'Session_ID' => $sessionGame->Session_ID,
                 'Session_Date' => $sessionGame->Session_Date,
                 'Session_Time' => $sessionGame->Session_Time,
+                'Session_Location' => $sessionGame->Session_Location,
                 'Team_Name' => $team->Team_Name ?? 'N/A',
                 'ManualAway_Name' => $sessionGame->ManualAway_Name,
                 'ManualAway_Score' => $sessionGame->ManualAway_Score,
