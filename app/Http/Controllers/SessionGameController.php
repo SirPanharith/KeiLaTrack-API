@@ -157,19 +157,26 @@ class SessionGameController extends Controller
     // Update the specified session game
     public function update(Request $request, $id)
     {
-        // Validate the request to only allow updating SessionStatus_ID
+        // Validate the request to only allow updating specific fields
         $validated = $request->validate([
-            'SessionStatus_ID' => 'required|integer|exists:SessionStatus,SessionStatus_ID',
+            'ManualAway_Name' => 'nullable|string|max:255',
+            'ManualAway_Score' => 'nullable|integer|min:0',
+            'SessionStatus_ID' => 'nullable|integer|exists:SessionStatus,SessionStatus_ID',
         ]);
 
         // Find the session game by its ID
         $sessionGame = SessionGame::findOrFail($id);
 
-        // Update only the SessionStatus_ID
-        $sessionGame->update(['SessionStatus_ID' => $validated['SessionStatus_ID']]);
+        // Update the fields
+        $sessionGame->update([
+            'ManualAway_Name' => $validated['ManualAway_Name'] ?? $sessionGame->ManualAway_Name, // Update only if provided
+            'ManualAway_Score' => $validated['ManualAway_Score'] ?? $sessionGame->ManualAway_Score, // Update only if provided
+            'SessionStatus_ID' => $validated['SessionStatus_ID'], // Update required field
+        ]);
 
         return response()->json($sessionGame);
     }
+
 
     // Remove the specified session game
     public function destroy($id)
