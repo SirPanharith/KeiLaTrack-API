@@ -120,7 +120,10 @@ Route::get('/session-games', [SessionGameController::class, 'index']);
 Route::post('/session-games', [SessionGameController::class, 'store']);
 Route::get('/session-games/{Team_ID}', [SessionGameController::class, 'show']);
 Route::put('/session-games/{id}', [SessionGameController::class, 'update']);
-Route::delete('/session-games/{id}', [SessionGameController::class, 'destroy']);
+// Route::delete('/session-games/{id}', [SessionGameController::class, 'destroy']);
+// Delete Session based on sessionid
+Route::delete('/session-game/{sessionId}', [SessionGameController::class, 'destroyBySessionId']);
+
 
 Route::get('/session-games/player/{playerId}', [SessionGameController::class, 'getSessionGamesByPlayer']);
 Route::get('/session-games/{id}', [SessionGameController::class, 'showspecificsession']);

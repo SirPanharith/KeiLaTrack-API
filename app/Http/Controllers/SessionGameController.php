@@ -740,5 +740,33 @@ class SessionGameController extends Controller
         ], 200);
     }
 
+    public function destroyBySessionId($sessionId)
+    {
+        try {
+            // Find the session game by Session_ID
+            $sessionGame = SessionGame::where('Session_ID', $sessionId)->firstOrFail();
+
+            // Delete related records in the associated tables
+            $sessionGame->settings()->delete();
+            $sessionGame->scoreBoard()->delete();
+            $sessionGame->sessionInvitations()->delete();
+            $sessionGame->manualPlayers()->delete();
+            $sessionGame->homeScores()->delete();
+            $sessionGame->awayScores()->delete();
+            $sessionGame->substitutions()->delete();
+            $sessionGame->matchSummaries()->delete();
+            $sessionGame->playerNotes()->delete();
+
+            // Finally, delete the session game
+            $sessionGame->delete();
+
+            return response()->json(['message' => 'Session game deleted successfully'], 204);
+        } catch (\Exception $e) {
+            // Handle the exception and return an error response
+            return response()->json(['error' => $e->getMessage()], 500);
+        }
+    }
+
+
 
 }
