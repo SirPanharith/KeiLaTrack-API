@@ -103,18 +103,28 @@ class MatchSummaryController extends Controller
         $teamName = $matchSummaries->first()->sessionGame->team->Team_Name ?? 'N/A';
         $sessionTotalGoals = $matchSummaries->sum('Total_Goals');
 
-        // Calculate total assists for each player and manual player within the specific session
+        // Calculate total assists for each player and manual player and collect assist details
         $totalAssists = [];
 
         foreach ($matchSummaries as $summary) {
             if ($summary->Player_ID) {
-                $totalAssists[$summary->Player_ID] = HomeAssist::where('Player_ID', $summary->Player_ID)
-                    ->where('Session_ID', $sessionId) // Filter by the specific session
-                    ->count();
+                $assists = HomeAssist::where('Player_ID', $summary->Player_ID)->get();
+                $totalAssists[$summary->Player_ID] = $assists->map(function ($assist) {
+                    return [
+                        'Assist_ID' => $assist->HomeAssist_ID,
+                        'Player_ID' => $assist->Player_ID,
+                        'ManualPlayer_ID' => $assist->ManualPlayer_ID,
+                    ];
+                });
             } elseif ($summary->ManualPlayer_ID) {
-                $totalAssists[$summary->ManualPlayer_ID] = HomeAssist::where('ManualPlayer_ID', $summary->ManualPlayer_ID)
-                    ->where('Session_ID', $sessionId) // Filter by the specific session
-                    ->count();
+                $assists = HomeAssist::where('ManualPlayer_ID', $summary->ManualPlayer_ID)->get();
+                $totalAssists[$summary->ManualPlayer_ID] = $assists->map(function ($assist) {
+                    return [
+                        'Assist_ID' => $assist->HomeAssist_ID,
+                        'Player_ID' => $assist->Player_ID,
+                        'ManualPlayer_ID' => $assist->ManualPlayer_ID,
+                    ];
+                });
             }
         }
 
@@ -133,7 +143,7 @@ class MatchSummaryController extends Controller
                 $playerDetails = [
                     'Player_ID' => $summary->Player_ID,
                     'Player_Name' => $playerName,
-                    'Total_Assists' => $totalAssists[$summary->Player_ID] ?? 0,
+                    'Total_Assists' => $totalAssists[$summary->Player_ID] ?? [],
                 ];
             } elseif ($summary->ManualPlayer_ID && $summary->manualPlayer) {
                 $primaryPosition = $summary->manualPlayer->primaryPosition->Position ?? 'N/A';
@@ -142,7 +152,7 @@ class MatchSummaryController extends Controller
                 $playerDetails = [
                     'ManualPlayer_ID' => $summary->ManualPlayer_ID,
                     'ManualPlayer_Name' => $manualPlayerName,
-                    'Total_Assists' => $totalAssists[$summary->ManualPlayer_ID] ?? 0,
+                    'Total_Assists' => $totalAssists[$summary->ManualPlayer_ID] ?? [],
                 ];
             }
 
@@ -163,6 +173,4 @@ class MatchSummaryController extends Controller
             'match_summaries' => $result,
         ]);
     }
-
-
 }
