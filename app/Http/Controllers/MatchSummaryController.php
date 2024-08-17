@@ -90,87 +90,85 @@ class MatchSummaryController extends Controller
     }
 
     // Get information based on Session_ID
-    public function getBySessionId($sessionId)
-    {
-        $matchSummaries = MatchSummary::where('Session_ID', $sessionId)
-            ->with(['player.playerInfo', 'manualPlayer', 'player.primaryPosition', 'player.secondaryPosition', 'manualPlayer.primaryPosition', 'manualPlayer.secondaryPosition', 'sessionGame.team'])
-            ->get();
+    // Get information based on Session_ID
+public function getBySessionId($sessionId)
+{
+    $matchSummaries = MatchSummary::where('Session_ID', $sessionId)
+        ->with(['player.playerInfo', 'manualPlayer', 'player.primaryPosition', 'player.secondaryPosition', 'manualPlayer.primaryPosition', 'manualPlayer.secondaryPosition', 'sessionGame.team'])
+        ->get();
 
-        if ($matchSummaries->isEmpty()) {
-            return response()->json(['message' => 'No match summaries found for this session'], 404);
-        }
-
-        $teamName = $matchSummaries->first()->sessionGame->team->Team_Name ?? 'N/A';
-        $sessionTotalGoals = $matchSummaries->sum('Total_Goals');
-
-        // Calculate total assists for each player and manual player and collect assist details
-        $totalAssists = [];
-
-        foreach ($matchSummaries as $summary) {
-            if ($summary->Player_ID) {
-                $assists = HomeAssist::where('Player_ID', $summary->Player_ID)->get();
-                $totalAssists[$summary->Player_ID] = $assists->map(function ($assist) {
-                    return [
-                        'Assist_ID' => $assist->HomeAssist_ID,
-                        'Player_ID' => $assist->Player_ID,
-                        'ManualPlayer_ID' => $assist->ManualPlayer_ID,
-                    ];
-                });
-            } elseif ($summary->ManualPlayer_ID) {
-                $assists = HomeAssist::where('ManualPlayer_ID', $summary->ManualPlayer_ID)->get();
-                $totalAssists[$summary->ManualPlayer_ID] = $assists->map(function ($assist) {
-                    return [
-                        'Assist_ID' => $assist->HomeAssist_ID,
-                        'Player_ID' => $assist->Player_ID,
-                        'ManualPlayer_ID' => $assist->ManualPlayer_ID,
-                    ];
-                });
-            }
-        }
-
-        // Transform the match summaries to include PrimaryPosition, SecondaryPosition, and Team_Name
-        $result = $matchSummaries->map(function ($summary) use ($totalAssists) {
-            $primaryPosition = 'N/A';
-            $secondaryPosition = 'N/A';
-            $playerName = 'N/A';
-            $manualPlayerName = 'N/A';
-            $playerDetails = [];
-
-            if ($summary->Player_ID && $summary->player) {
-                $primaryPosition = $summary->player->primaryPosition->Position ?? 'N/A';
-                $secondaryPosition = $summary->player->secondaryPosition->Position ?? 'N/A';
-                $playerName = optional($summary->player->playerInfo)->Player_Name ?? 'N/A';
-                $playerDetails = [
-                    'Player_ID' => $summary->Player_ID,
-                    'Player_Name' => $playerName,
-                    'Total_Assists' => $totalAssists[$summary->Player_ID] ?? [],
-                ];
-            } elseif ($summary->ManualPlayer_ID && $summary->manualPlayer) {
-                $primaryPosition = $summary->manualPlayer->primaryPosition->Position ?? 'N/A';
-                $secondaryPosition = $summary->manualPlayer->secondaryPosition->Position ?? 'N/A';
-                $manualPlayerName = $summary->manualPlayer->ManualPlayer_Name ?? 'N/A';
-                $playerDetails = [
-                    'ManualPlayer_ID' => $summary->ManualPlayer_ID,
-                    'ManualPlayer_Name' => $manualPlayerName,
-                    'Total_Assists' => $totalAssists[$summary->ManualPlayer_ID] ?? [],
-                ];
-            }
-
-            return array_merge($playerDetails, [
-                'MatchSummary_ID' => $summary->MatchSummary_ID,
-                'Session_ID' => $summary->Session_ID,
-                'Total_Goals' => $summary->Total_Goals,
-                'Total_Duration' => $summary->Total_Duration,
-                'PrimaryPosition' => $primaryPosition,
-                'SecondaryPosition' => $secondaryPosition,
-            ]);
-        });
-
-        return response()->json([
-            'Session_ID' => $sessionId,
-            'Team_Name' => $teamName,
-            'Session_Total_Goals' => $sessionTotalGoals,
-            'match_summaries' => $result,
-        ]);
+    if ($matchSummaries->isEmpty()) {
+        return response()->json(['message' => 'No match summaries found for this session'], 404);
     }
+
+    $teamName = $matchSummaries->first()->sessionGame->team->Team_Name ?? 'N/A';
+    $sessionTotalGoals = $matchSummaries->sum('Total_Goals');
+
+    // Collect Assist_IDs from HomeAssist that match the given Session_ID in HomeScore
+    $totalAssists = [];
+
+    foreach ($matchSummaries as $summary) {
+        if ($summary->Player_ID) {
+            $assists = HomeAssist::where('Player_ID', $summary->Player_ID)
+                ->whereHas('homeScores', function ($query) use ($sessionId) {
+                    $query->where('Session_ID', $sessionId);
+                })
+                ->get();
+            $totalAssists[$summary->Player_ID] = $assists->pluck('HomeAssist_ID');
+        } elseif ($summary->ManualPlayer_ID) {
+            $assists = HomeAssist::where('ManualPlayer_ID', $summary->ManualPlayer_ID)
+                ->whereHas('homeScores', function ($query) use ($sessionId) {
+                    $query->where('Session_ID', $sessionId);
+                })
+                ->get();
+            $totalAssists[$summary->ManualPlayer_ID] = $assists->pluck('HomeAssist_ID');
+        }
+    }
+
+    // Transform the match summaries to include only Assist_IDs for the current session
+    $result = $matchSummaries->map(function ($summary) use ($totalAssists) {
+        $primaryPosition = 'N/A';
+        $secondaryPosition = 'N/A';
+        $playerName = 'N/A';
+        $manualPlayerName = 'N/A';
+        $playerDetails = [];
+
+        if ($summary->Player_ID && $summary->player) {
+            $primaryPosition = $summary->player->primaryPosition->Position ?? 'N/A';
+            $secondaryPosition = $summary->player->secondaryPosition->Position ?? 'N/A';
+            $playerName = optional($summary->player->playerInfo)->Player_Name ?? 'N/A';
+            $playerDetails = [
+                'Player_ID' => $summary->Player_ID,
+                'Player_Name' => $playerName,
+                'Assist_IDs' => $totalAssists[$summary->Player_ID] ?? [],
+            ];
+        } elseif ($summary->ManualPlayer_ID && $summary->manualPlayer) {
+            $primaryPosition = $summary->manualPlayer->primaryPosition->Position ?? 'N/A';
+            $secondaryPosition = $summary->manualPlayer->secondaryPosition->Position ?? 'N/A';
+            $manualPlayerName = $summary->manualPlayer->ManualPlayer_Name ?? 'N/A';
+            $playerDetails = [
+                'ManualPlayer_ID' => $summary->ManualPlayer_ID,
+                'ManualPlayer_Name' => $manualPlayerName,
+                'Assist_IDs' => $totalAssists[$summary->ManualPlayer_ID] ?? [],
+            ];
+        }
+
+        return array_merge($playerDetails, [
+            'MatchSummary_ID' => $summary->MatchSummary_ID,
+            'Session_ID' => $summary->Session_ID,
+            'Total_Goals' => $summary->Total_Goals,
+            'Total_Duration' => $summary->Total_Duration,
+            'PrimaryPosition' => $primaryPosition,
+            'SecondaryPosition' => $secondaryPosition,
+        ]);
+    });
+
+    return response()->json([
+        'Session_ID' => $sessionId,
+        'Team_Name' => $teamName,
+        'Session_Total_Goals' => $sessionTotalGoals,
+        'match_summaries' => $result,
+    ]);
+}
+
 }
