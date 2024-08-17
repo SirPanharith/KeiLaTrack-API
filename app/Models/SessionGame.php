@@ -84,4 +84,9 @@ class SessionGame extends Model
     {
         return $this->belongsTo(SessionStatus::class, 'SessionStatus_ID', 'SessionStatus_ID');
     }
+
+    public function homeAssists()
+    {
+        return $this->hasMany(HomeAssist::class, 'Session_ID', 'Session_ID');
+    }
 }

@@ -17,19 +17,30 @@ class HomeAssistController extends Controller
 
     // Store a newly created resource in storage.
     public function store(Request $request)
-    {
-        // Validate the incoming request
-        $validated = $request->validate([
-            'Player_ID' => 'nullable|exists:Player,Player_ID',
-            'ManualPlayer_ID' => 'nullable|exists:ManualPlayer,ManualPlayer_ID',
-        ]);
+{
+    // Validate the incoming request
+    $validated = $request->validate([
+        'Player_ID' => 'nullable|exists:Player,Player_ID',
+        'ManualPlayer_ID' => 'nullable|exists:ManualPlayer,ManualPlayer_ID',
+        'Session_ID' => 'required|exists:SessionGame,Session_ID', // Ensure the Session_ID is provided and valid
+    ]);
 
-        // Create the HomeAssist record
-        $homeAssist = HomeAssist::create($validated);
-
-        // Return the created HomeAssist with a 201 Created status
-        return response()->json($homeAssist, 201);
+    // Ensure that either Player_ID or ManualPlayer_ID is provided, but not both
+    if (is_null($validated['Player_ID']) && is_null($validated['ManualPlayer_ID'])) {
+        return response()->json(['error' => 'Either Player_ID or ManualPlayer_ID must be provided'], 400);
     }
+
+    if (!is_null($validated['Player_ID']) && !is_null($validated['ManualPlayer_ID'])) {
+        return response()->json(['error' => 'Only one of Player_ID or ManualPlayer_ID should be provided'], 400);
+    }
+
+    // Create the HomeAssist record
+    $homeAssist = HomeAssist::create($validated);
+
+    // Return the created HomeAssist with a 201 Created status
+    return response()->json($homeAssist, 201);
+}
+
 
     // Display the specified resource.
     public function show($id)

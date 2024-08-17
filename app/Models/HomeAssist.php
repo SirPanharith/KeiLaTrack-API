@@ -14,6 +14,7 @@ class HomeAssist extends Model
     protected $fillable = [
         'Player_ID',
         'ManualPlayer_ID',
+        'Session_ID'
     ];
 
     /**
@@ -34,5 +35,10 @@ class HomeAssist extends Model
     public function player()
     {
         return $this->belongsTo(Player::class, 'Player_ID', 'Player_ID');
+    }
+
+    public function sessionGame()
+    {
+        return $this->belongsTo(SessionGame::class, 'Session_ID', 'Session_ID');
     }
 }
