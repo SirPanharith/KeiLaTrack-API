@@ -582,145 +582,146 @@ class SessionGameController extends Controller
 
 
     public function getSessionGameBySessionAndPlayer($sessionId, $playerId)
-{
-    try {
-        // Fetch the current session game by Session_ID
-        $sessionGame = SessionGame::with(['settings', 'players.primaryPosition', 'players.secondaryPosition', 'team'])
-                                    ->where('Session_ID', $sessionId)
-                                    ->firstOrFail();
-
-        // Filter players to match the specified Player_ID
-        $player = $sessionGame->players->filter(function ($player) use ($playerId) {
-            return $player->Player_ID == $playerId;
-        })->map(function ($player) {
-            return [
-                'Player_ID' => $player->Player_ID,
-                'Player_Name' => $player->playerInfo->Player_Name ?? 'N/A',
-                'PrimaryPosition' => $player->primaryPosition->Position ?? 'N/A',
-                'SecondaryPosition' => $player->secondaryPosition->Position ?? 'N/A',
+    {
+        try {
+            // Fetch the current session game by Session_ID
+            $sessionGame = SessionGame::with(['settings', 'players.primaryPosition', 'players.secondaryPosition', 'team'])
+                                        ->where('Session_ID', $sessionId)
+                                        ->firstOrFail();
+    
+            // Filter players to match the specified Player_ID
+            $player = $sessionGame->players->filter(function ($player) use ($playerId) {
+                return $player->Player_ID == $playerId;
+            })->map(function ($player) {
+                return [
+                    'Player_ID' => $player->Player_ID,
+                    'Player_Name' => $player->playerInfo->Player_Name ?? 'N/A',
+                    'PrimaryPosition' => $player->primaryPosition->Position ?? 'N/A',
+                    'SecondaryPosition' => $player->secondaryPosition->Position ?? 'N/A',
+                ];
+            })->first();
+    
+            if (!$player) {
+                return response()->json(['message' => 'Player not found in this session'], 404);
+            }
+    
+            // Get all sessions the player has participated in and gather details for each session
+            $allSessions = SessionGame::whereHas('players', function ($query) use ($playerId) {
+                $query->where('Player_ID', $playerId);
+            })->get()->map(function ($session) use ($playerId) {
+                // Calculate total goals for this session
+                $totalGoals = HomeScore::where('Session_ID', $session->Session_ID)
+                    ->where('Player_ID', $playerId)
+                    ->count();
+    
+                // Calculate total assists for this session
+                $totalAssists = HomeScore::where('Session_ID', $session->Session_ID)
+                    ->where('HomeAssist_ID', $playerId)
+                    ->count();
+    
+                // Get total duration for the player in this session
+                $totalDuration = MatchSummary::where('Session_ID', $session->Session_ID)
+                    ->where('Player_ID', $playerId)
+                    ->value('Total_Duration') ?? '00:00:00';
+    
+                return [
+                    'Session_ID' => $session->Session_ID,
+                    'Session_Date' => $session->Session_Date,
+                    'Session_Time' => $session->Session_Time,
+                    'Total_Goals' => $totalGoals,
+                    'Total_Assists' => $totalAssists,
+                    'Total_Duration' => $totalDuration,
+                ];
+            });
+    
+            // Filter sessions to only include those before the current session
+            $priorSessions = $allSessions->filter(function ($session) use ($sessionGame) {
+                return $session['Session_Date'] < $sessionGame->Session_Date ||
+                       ($session['Session_Date'] == $sessionGame->Session_Date && $session['Session_Time'] < $sessionGame->Session_Time);
+            });
+    
+            // Sort the prior sessions by date and time, most recent on top
+            $sortedPriorSessions = $priorSessions->sortByDesc(function ($session) {
+                return $session['Session_Date'] . ' ' . $session['Session_Time'];
+            })->values(); // Re-index the array
+    
+            // Get the last 3 prior sessions
+            $threePriorSessions = $sortedPriorSessions->take(3);
+    
+            // If there are less than 3 sessions, fill the remaining slots with placeholder data
+            while ($threePriorSessions->count() < 3) {
+                $threePriorSessions->prepend([
+                    'Session_ID' => 'N/A',
+                    'Session_Date' => 'N/A',
+                    'Session_Time' => 'N/A',
+                    'Total_Goals' => 'N/A',
+                    'Total_Assists' => 'N/A',
+                    'Total_Duration' => 'N/A',
+                ]);
+            }
+    
+            // Structure the response as 1_Prior_Session, 2_Prior_Session, and 3_Prior_Session
+            $responseSessions = [
+                '1_Prior_Session' => $threePriorSessions->get(0), // Most recent session
+                '2_Prior_Session' => $threePriorSessions->get(1),
+                '3_Prior_Session' => $threePriorSessions->get(2),
             ];
-        })->first();
-
-        if (!$player) {
-            return response()->json(['message' => 'Player not found in this session'], 404);
-        }
-
-        // Get all sessions the player has participated in and gather details for each session
-        $allSessions = SessionGame::whereHas('players', function ($query) use ($playerId) {
-            $query->where('Player_ID', $playerId);
-        })->get()->map(function ($session) use ($playerId) {
-            // Calculate total goals for this session
-            $totalGoals = HomeScore::where('Session_ID', $session->Session_ID)
+    
+            // Get the first setting
+            $setting = $sessionGame->settings->first();
+            $TotalPlayerPerSide = $setting ? ($setting->S_Num + $setting->M_Num + $setting->D_Num + $setting->Gk_Num) : 0;
+    
+            // Get total goals for the player in the session
+            $totalGoals = HomeScore::where('Session_ID', $sessionId)
                 ->where('Player_ID', $playerId)
                 ->count();
-
-            // Calculate total assists for this session
-            $totalAssists = HomeScore::where('Session_ID', $session->Session_ID)
+    
+            // Get total assists for the player in the session
+            $totalAssists = HomeScore::where('Session_ID', $sessionId)
                 ->where('HomeAssist_ID', $playerId)
                 ->count();
-
-            // Get total duration for the player in this session
-            $totalDuration = MatchSummary::where('Session_ID', $session->Session_ID)
+    
+            // Get session total goals
+            $homeScoreController = new HomeScoreController();
+            $sessionTotalGoals = $homeScoreController->calculateSessionTotalGoals($sessionId);
+    
+            // Get the team name
+            $teamName = $sessionGame->team->Team_Name ?? 'N/A';
+    
+            // Get total duration for the player in the session
+            $totalDuration = MatchSummary::where('Session_ID', $sessionId)
                 ->where('Player_ID', $playerId)
                 ->value('Total_Duration') ?? '00:00:00';
-
-            return [
-                'Session_ID' => $session->Session_ID,
-                'Session_Date' => $session->Session_Date,
-                'Session_Time' => $session->Session_Time,
+    
+            // Return the response
+            return response()->json([
+                'Session_ID' => $sessionGame->Session_ID,
+                'Session_Date' => $sessionGame->Session_Date,
+                'Session_Time' => $sessionGame->Session_Time,
+                'Side_ID' => $setting->Side_ID ?? 'N/A',
+                'TotalPlayerPerSide' => $TotalPlayerPerSide,
+                'Player_ID' => $player['Player_ID'],
+                'Player_Name' => $player['Player_Name'],
+                'PrimaryPosition' => $player['PrimaryPosition'],
+                'SecondaryPosition' => $player['SecondaryPosition'],
                 'Total_Goals' => $totalGoals,
                 'Total_Assists' => $totalAssists,
-                'Total_Duration' => $totalDuration,
-            ];
-        });
-
-        // Filter sessions to only include those before the current session
-        $priorSessions = $allSessions->filter(function ($session) use ($sessionGame) {
-            return $session['Session_Date'] < $sessionGame->Session_Date ||
-                   ($session['Session_Date'] == $sessionGame->Session_Date && $session['Session_Time'] < $sessionGame->Session_Time);
-        });
-
-        // Sort the prior sessions by date and time
-        $sortedPriorSessions = $priorSessions->sortByDesc(function ($session) {
-            return $session['Session_Date'] . ' ' . $session['Session_Time'];
-        })->values(); // Re-index the array
-
-        // Get the last 3 prior sessions
-        $threePriorSessions = $sortedPriorSessions->take(3);
-
-        // If there are less than 3 sessions, fill the remaining slots with placeholder data
-        while ($threePriorSessions->count() < 3) {
-            $threePriorSessions->prepend([
-                'Session_ID' => 'N/A',
-                'Session_Date' => 'N/A',
-                'Session_Time' => 'N/A',
-                'Total_Goals' => 'N/A',
-                'Total_Assists' => 'N/A',
-                'Total_Duration' => 'N/A',
+                'Session_Total_Goals' => $sessionTotalGoals,
+                'ManualAway_Name' => $sessionGame->ManualAway_Name ?? 'Away Team',
+                'ManualAway_Score' => $sessionGame->ManualAway_Score ?? 0,
+                'Team_Name' => $teamName,
+                'Session_Location' => $sessionGame->Session_Location,
+                'Total_Duration' => $totalDuration, // Include the total duration
+                '1_Prior_Session' => $responseSessions['1_Prior_Session'], // Most recent prior session
+                '2_Prior_Session' => $responseSessions['2_Prior_Session'],
+                '3_Prior_Session' => $responseSessions['3_Prior_Session'],
             ]);
+        } catch (\Exception $e) {
+            // Handle or log the exception
+            return response()->json(['error' => $e->getMessage()], 500);
         }
-
-        // Structure the response as 1_Prior_Session, 2_Prior_Session, and 3_Prior_Session
-        $responseSessions = [
-            '1_Prior_Session' => $threePriorSessions->get(2),
-            '2_Prior_Session' => $threePriorSessions->get(1),
-            '3_Prior_Session' => $threePriorSessions->get(0),
-        ];
-
-        // Get the first setting
-        $setting = $sessionGame->settings->first();
-        $TotalPlayerPerSide = $setting ? ($setting->S_Num + $setting->M_Num + $setting->D_Num + $setting->Gk_Num) : 0;
-
-        // Get total goals for the player in the session
-        $totalGoals = HomeScore::where('Session_ID', $sessionId)
-            ->where('Player_ID', $playerId)
-            ->count();
-
-        // Get total assists for the player in the session
-        $totalAssists = HomeScore::where('Session_ID', $sessionId)
-            ->where('HomeAssist_ID', $playerId)
-            ->count();
-
-        // Get session total goals
-        $homeScoreController = new HomeScoreController();
-        $sessionTotalGoals = $homeScoreController->calculateSessionTotalGoals($sessionId);
-
-        // Get the team name
-        $teamName = $sessionGame->team->Team_Name ?? 'N/A';
-
-        // Get total duration for the player in the session
-        $totalDuration = MatchSummary::where('Session_ID', $sessionId)
-            ->where('Player_ID', $playerId)
-            ->value('Total_Duration') ?? '00:00:00';
-
-        // Return the response
-        return response()->json([
-            'Session_ID' => $sessionGame->Session_ID,
-            'Session_Date' => $sessionGame->Session_Date,
-            'Session_Time' => $sessionGame->Session_Time,
-            'Side_ID' => $setting->Side_ID ?? 'N/A',
-            'TotalPlayerPerSide' => $TotalPlayerPerSide,
-            'Player_ID' => $player['Player_ID'],
-            'Player_Name' => $player['Player_Name'],
-            'PrimaryPosition' => $player['PrimaryPosition'],
-            'SecondaryPosition' => $player['SecondaryPosition'],
-            'Total_Goals' => $totalGoals,
-            'Total_Assists' => $totalAssists,
-            'Session_Total_Goals' => $sessionTotalGoals,
-            'ManualAway_Name' => $sessionGame->ManualAway_Name ?? 'Away Team',
-            'ManualAway_Score' => $sessionGame->ManualAway_Score ?? 0,
-            'Team_Name' => $teamName,
-            'Session_Location' => $sessionGame->Session_Location,
-            'Total_Duration' => $totalDuration, // Include the total duration
-            '1_Prior_Session' => $responseSessions['1_Prior_Session'],
-            '2_Prior_Session' => $responseSessions['2_Prior_Session'],
-            '3_Prior_Session' => $responseSessions['3_Prior_Session'],
-        ]);
-    } catch (\Exception $e) {
-        // Handle or log the exception
-        return response()->json(['error' => $e->getMessage()], 500);
     }
-}
+    
 
 
 
