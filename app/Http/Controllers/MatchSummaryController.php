@@ -103,14 +103,18 @@ class MatchSummaryController extends Controller
         $teamName = $matchSummaries->first()->sessionGame->team->Team_Name ?? 'N/A';
         $sessionTotalGoals = $matchSummaries->sum('Total_Goals');
 
-        // Calculate total assists for each player and manual player
+        // Calculate total assists for each player and manual player within the specific session
         $totalAssists = [];
 
         foreach ($matchSummaries as $summary) {
             if ($summary->Player_ID) {
-                $totalAssists[$summary->Player_ID] = HomeAssist::where('Player_ID', $summary->Player_ID)->count();
+                $totalAssists[$summary->Player_ID] = HomeAssist::where('Player_ID', $summary->Player_ID)
+                    ->where('Session_ID', $sessionId) // Filter by the specific session
+                    ->count();
             } elseif ($summary->ManualPlayer_ID) {
-                $totalAssists[$summary->ManualPlayer_ID] = HomeAssist::where('ManualPlayer_ID', $summary->ManualPlayer_ID)->count();
+                $totalAssists[$summary->ManualPlayer_ID] = HomeAssist::where('ManualPlayer_ID', $summary->ManualPlayer_ID)
+                    ->where('Session_ID', $sessionId) // Filter by the specific session
+                    ->count();
             }
         }
 
@@ -159,5 +163,6 @@ class MatchSummaryController extends Controller
             'match_summaries' => $result,
         ]);
     }
+
 
 }
