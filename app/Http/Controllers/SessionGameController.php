@@ -586,8 +586,8 @@ class SessionGameController extends Controller
         try {
             // Fetch the session game by Session_ID
             $sessionGame = SessionGame::with(['settings', 'players.primaryPosition', 'players.secondaryPosition', 'team'])
-                                    ->where('Session_ID', $sessionId)
-                                    ->firstOrFail();
+                                        ->where('Session_ID', $sessionId)
+                                        ->firstOrFail();
 
             // Filter players to match the specified Player_ID
             $player = $sessionGame->players->filter(function ($player) use ($playerId) {
@@ -603,6 +603,60 @@ class SessionGameController extends Controller
 
             if (!$player) {
                 return response()->json(['message' => 'Player not found in this session'], 404);
+            }
+
+            // Get all sessions the player has participated in and gather details for each session
+            $allSessions = SessionGame::whereHas('players', function ($query) use ($playerId) {
+                $query->where('Player_ID', $playerId);
+            })->get()->map(function ($session) use ($playerId) {
+                // Calculate total goals for this session
+                $totalGoals = HomeScore::where('Session_ID', $session->Session_ID)
+                    ->where('Player_ID', $playerId)
+                    ->count();
+
+                // Calculate total assists for this session
+                $totalAssists = HomeScore::where('Session_ID', $session->Session_ID)
+                    ->where('HomeAssist_ID', $playerId)
+                    ->count();
+
+                // Get total duration for the player in this session
+                $totalDuration = MatchSummary::where('Session_ID', $session->Session_ID)
+                    ->where('Player_ID', $playerId)
+                    ->value('Total_Duration') ?? '00:00:00';
+
+                return [
+                    'Session_ID' => $session->Session_ID,
+                    'Session_Date' => $session->Session_Date,
+                    'Session_Time' => $session->Session_Time,
+                    'Total_Goals' => $totalGoals,
+                    'Total_Assists' => $totalAssists,
+                    'Total_Duration' => $totalDuration,
+                ];
+            });
+
+            // Sort the sessions by Session_Date and Session_Time
+            $sortedSessions = $allSessions->sortBy(function ($session) {
+                return $session['Session_Date'] . ' ' . $session['Session_Time'];
+            })->values(); // Re-index the array
+
+            // Get the current session's index in the sorted list
+            $currentSessionIndex = $sortedSessions->search(function ($session) use ($sessionId) {
+                return $session['Session_ID'] == $sessionId;
+            });
+
+            // Get the 3 sessions prior to the current session
+            $previousSessions = $sortedSessions->slice(max(0, $currentSessionIndex - 3), 3);
+
+            // If there are less than 3 sessions, fill the remaining slots with placeholder data
+            while ($previousSessions->count() < 3) {
+                $previousSessions->prepend([
+                    'Session_ID' => 'N/A',
+                    'Session_Date' => 'N/A',
+                    'Session_Time' => 'N/A',
+                    'Total_Goals' => 'N/A',
+                    'Total_Assists' => 'N/A',
+                    'Total_Duration' => 'N/A',
+                ]);
             }
 
             // Get the first setting
@@ -650,12 +704,14 @@ class SessionGameController extends Controller
                 'Team_Name' => $teamName,
                 'Session_Location' => $sessionGame->Session_Location,
                 'Total_Duration' => $totalDuration, // Include the total duration
+                'All_Sessions' => $previousSessions->values(), // Include the 3 previous sessions (with placeholders if needed)
             ]);
         } catch (\Exception $e) {
             // Handle or log the exception
             return response()->json(['error' => $e->getMessage()], 500);
         }
     }
+
 
 
     public function getSessionInfoByPlayerInfoId($playerInfoId)
