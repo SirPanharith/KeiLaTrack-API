@@ -605,6 +605,11 @@ class SessionGameController extends Controller
             return response()->json(['message' => 'Player not found in this session'], 404);
         }
 
+        // Get the list of assists for this player in this session
+        $assists = HomeAssist::where('Session_ID', $sessionId)
+            ->where('Player_ID', $playerId)
+            ->get(['HomeAssist_ID', 'Session_ID', 'Player_ID', 'ManualPlayer_ID']);
+
         // Get all sessions the player has participated in and gather details for each session
         $allSessions = SessionGame::whereHas('players', function ($query) use ($playerId) {
             $query->where('Player_ID', $playerId);
@@ -615,8 +620,8 @@ class SessionGameController extends Controller
                 ->count();
 
             // Calculate total assists for this session
-            $totalAssists = HomeScore::where('Session_ID', $session->Session_ID)
-                ->where('HomeAssist_ID', $playerId)
+            $totalAssists = HomeAssist::where('Session_ID', $session->Session_ID)
+                ->where('Player_ID', $playerId)
                 ->count();
 
             // Get total duration for the player in this session
@@ -676,11 +681,6 @@ class SessionGameController extends Controller
             ->where('Player_ID', $playerId)
             ->count();
 
-        // Get total assists for the player in the session
-        $totalAssists = HomeScore::where('Session_ID', $sessionId)
-            ->where('HomeAssist_ID', $playerId)
-            ->count();
-
         // Get session total goals
         $homeScoreController = new HomeScoreController();
         $sessionTotalGoals = $homeScoreController->calculateSessionTotalGoals($sessionId);
@@ -705,7 +705,8 @@ class SessionGameController extends Controller
             'PrimaryPosition' => $player['PrimaryPosition'],
             'SecondaryPosition' => $player['SecondaryPosition'],
             'Total_Goals' => $totalGoals,
-            'Total_Assists' => $totalAssists,
+            'Total_Assists' => $assists->count(), // Total assists count
+            'Assists_List' => $assists, // The list of assists
             'Session_Total_Goals' => $sessionTotalGoals,
             'ManualAway_Name' => $sessionGame->ManualAway_Name ?? 'Away Team',
             'ManualAway_Score' => $sessionGame->ManualAway_Score ?? 0,
@@ -721,6 +722,7 @@ class SessionGameController extends Controller
         return response()->json(['error' => $e->getMessage()], 500);
     }
 }
+
 
     
 
