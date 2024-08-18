@@ -625,15 +625,16 @@ class SessionGameController extends Controller
                 ->where('Player_ID', $playerId)
                 ->count();
 
-            // Get total duration for the player in this session
-            $totalDurationSeconds = MatchSummary::where('Session_ID', $session->Session_ID)
+            // Get total duration for the player in this session and format it to MM:SS
+            $totalDuration = MatchSummary::where('Session_ID', $session->Session_ID)
                 ->where('Player_ID', $playerId)
-                ->value('Total_Duration') ?? 0;
+                ->value('Total_Duration') ?? '00:00:00';
 
-            // Convert Total_Duration from seconds to MM:SS format
-            $minutes = floor($totalDurationSeconds / 60);
-            $seconds = $totalDurationSeconds % 60;
-            $totalDuration = sprintf('%02d:%02d', $minutes, $seconds);
+            // Convert the duration to seconds
+            $durationInSeconds = strtotime($totalDuration) - strtotime('TODAY');
+
+            // Format the duration to MM:SS
+            $formattedDuration = gmdate('i:s', $durationInSeconds);
 
             return [
                 'Session_ID' => $session->Session_ID,
@@ -641,7 +642,7 @@ class SessionGameController extends Controller
                 'Session_Time' => $session->Session_Time,
                 'Total_Goals' => $totalGoals,
                 'Total_Assists' => $totalAssists,
-                'Total_Duration' => $totalDuration,
+                'Total_Duration' => $formattedDuration,
             ];
         });
 
@@ -664,15 +665,38 @@ class SessionGameController extends Controller
             if ($threePriorSessions->isEmpty()) {
                 break;
             }
+
             $threePriorSessions->push([]);
         }
 
         // Structure the response as 1_Prior_Session, 2_Prior_Session, and 3_Prior_Session
         $responseSessions = [
-            '1_Prior_Session' => $threePriorSessions->get(0) ?: null,
-            '2_Prior_Session' => $threePriorSessions->get(1) ?: null,
-            '3_Prior_Session' => $threePriorSessions->get(2) ?: null,
+            '1_Prior_Session' => $threePriorSessions->get(0) ?: [
+                'Session_ID' => 'N/A',
+                'Session_Date' => 'N/A',
+                'Session_Time' => 'N/A',
+                'Total_Goals' => 'N/A',
+                'Total_Assists' => 'N/A',
+                'Total_Duration' => 'N/A',
+            ],
+            '2_Prior_Session' => $threePriorSessions->get(1) ?: [
+                'Session_ID' => 'N/A',
+                'Session_Date' => 'N/A',
+                'Session_Time' => 'N/A',
+                'Total_Goals' => 'N/A',
+                'Total_Assists' => 'N/A',
+                'Total_Duration' => 'N/A',
+            ],
+            '3_Prior_Session' => $threePriorSessions->get(2) ?: [
+                'Session_ID' => 'N/A',
+                'Session_Date' => 'N/A',
+                'Session_Time' => 'N/A',
+                'Total_Goals' => 'N/A',
+                'Total_Assists' => 'N/A',
+                'Total_Duration' => 'N/A',
+            ],
         ];
+        
 
         // Get the first setting
         $setting = $sessionGame->settings->first();
@@ -690,15 +714,16 @@ class SessionGameController extends Controller
         // Get the team name
         $teamName = $sessionGame->team->Team_Name ?? 'N/A';
 
-        // Get total duration for the player in the session
-        $totalDurationSeconds = MatchSummary::where('Session_ID', $sessionId)
+        // Get total duration for the player in the session and format it to MM:SS
+        $totalDuration = MatchSummary::where('Session_ID', $sessionId)
             ->where('Player_ID', $playerId)
-            ->value('Total_Duration') ?? 0;
+            ->value('Total_Duration') ?? '00:00:00';
 
-        // Convert Total_Duration from seconds to MM:SS format
-        $minutes = floor($totalDurationSeconds / 60);
-        $seconds = $totalDurationSeconds % 60;
-        $totalDuration = sprintf('%02d:%02d', $minutes, $seconds);
+        // Convert the duration to seconds
+        $durationInSeconds = strtotime($totalDuration) - strtotime('TODAY');
+
+        // Format the duration to MM:SS
+        $formattedDuration = gmdate('i:s', $durationInSeconds);
 
         // Return the response
         return response()->json([
@@ -719,7 +744,7 @@ class SessionGameController extends Controller
             'ManualAway_Score' => $sessionGame->ManualAway_Score ?? 0,
             'Team_Name' => $teamName,
             'Session_Location' => $sessionGame->Session_Location,
-            'Total_Duration' => $totalDuration, // Include the total duration in MM:SS format
+            'Total_Duration' => $formattedDuration, // Include the total duration in MM:SS format
             '1_Prior_Session' => $responseSessions['1_Prior_Session'], // Most recent prior session
             '2_Prior_Session' => $responseSessions['2_Prior_Session'],
             '3_Prior_Session' => $responseSessions['3_Prior_Session'],
