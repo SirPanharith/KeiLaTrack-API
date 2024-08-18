@@ -611,14 +611,6 @@ class SessionGameController extends Controller
             ->where('Player_ID', $playerId)
             ->get(['HomeAssist_ID', 'Session_ID', 'Player_ID', 'ManualPlayer_ID']);
 
-        // Get total duration for the player in the session and format it as MM:SS
-        $totalDuration = MatchSummary::where('Session_ID', $sessionId)
-            ->where('Player_ID', $playerId)
-            ->value('Total_Duration') ?? '00:00:00';
-
-        // Convert the Total_Duration from HH:MM:SS to MM:SS
-        $totalDuration = $this->convertDurationToMMSS($totalDuration);
-
         // Get all sessions the player has participated in and gather details for each session
         $allSessions = SessionGame::whereHas('players', function ($query) use ($playerId) {
             $query->where('Player_ID', $playerId);
@@ -633,13 +625,15 @@ class SessionGameController extends Controller
                 ->where('Player_ID', $playerId)
                 ->count();
 
-            // Get total duration for the player in this session and format it as MM:SS
-            $totalDuration = MatchSummary::where('Session_ID', $session->Session_ID)
+            // Get total duration for the player in this session
+            $totalDurationSeconds = MatchSummary::where('Session_ID', $session->Session_ID)
                 ->where('Player_ID', $playerId)
-                ->value('Total_Duration') ?? '00:00:00';
+                ->value('Total_Duration') ?? 0;
 
-            // Convert the Total_Duration from HH:MM:SS to MM:SS
-            $totalDuration = $this->convertDurationToMMSS($totalDuration);
+            // Convert Total_Duration from seconds to MM:SS format
+            $minutes = floor($totalDurationSeconds / 60);
+            $seconds = $totalDurationSeconds % 60;
+            $totalDuration = sprintf('%02d:%02d', $minutes, $seconds);
 
             return [
                 'Session_ID' => $session->Session_ID,
@@ -667,7 +661,6 @@ class SessionGameController extends Controller
 
         // If there are less than 3 sessions, fill the remaining slots only if data exists
         while ($threePriorSessions->count() < 3) {
-            // If there are no more sessions, break out of the loop to avoid adding 'N/A'
             if ($threePriorSessions->isEmpty()) {
                 break;
             }
@@ -676,7 +669,7 @@ class SessionGameController extends Controller
 
         // Structure the response as 1_Prior_Session, 2_Prior_Session, and 3_Prior_Session
         $responseSessions = [
-            '1_Prior_Session' => $threePriorSessions->get(0) ?: null, // Check if there is data
+            '1_Prior_Session' => $threePriorSessions->get(0) ?: null,
             '2_Prior_Session' => $threePriorSessions->get(1) ?: null,
             '3_Prior_Session' => $threePriorSessions->get(2) ?: null,
         ];
@@ -697,6 +690,16 @@ class SessionGameController extends Controller
         // Get the team name
         $teamName = $sessionGame->team->Team_Name ?? 'N/A';
 
+        // Get total duration for the player in the session
+        $totalDurationSeconds = MatchSummary::where('Session_ID', $sessionId)
+            ->where('Player_ID', $playerId)
+            ->value('Total_Duration') ?? 0;
+
+        // Convert Total_Duration from seconds to MM:SS format
+        $minutes = floor($totalDurationSeconds / 60);
+        $seconds = $totalDurationSeconds % 60;
+        $totalDuration = sprintf('%02d:%02d', $minutes, $seconds);
+
         // Return the response
         return response()->json([
             'Session_ID' => $sessionGame->Session_ID,
@@ -716,7 +719,7 @@ class SessionGameController extends Controller
             'ManualAway_Score' => $sessionGame->ManualAway_Score ?? 0,
             'Team_Name' => $teamName,
             'Session_Location' => $sessionGame->Session_Location,
-            'Total_Duration' => $totalDuration, // Include the total duration formatted as MM:SS
+            'Total_Duration' => $totalDuration, // Include the total duration in MM:SS format
             '1_Prior_Session' => $responseSessions['1_Prior_Session'], // Most recent prior session
             '2_Prior_Session' => $responseSessions['2_Prior_Session'],
             '3_Prior_Session' => $responseSessions['3_Prior_Session'],
@@ -725,20 +728,6 @@ class SessionGameController extends Controller
         // Handle or log the exception
         return response()->json(['error' => $e->getMessage()], 500);
     }
-}
-
-// Helper function to convert HH:MM:SS to MM:SS format
-private function convertDurationToMMSS($duration)
-{
-    // Split the duration into hours, minutes, and seconds
-    $parts = explode(':', $duration);
-
-    // Convert the duration to minutes and seconds
-    $minutes = ($parts[0] * 60) + $parts[1];
-    $seconds = $parts[2];
-
-    // Return the formatted duration as MM:SS
-    return sprintf('%02d:%02d', $minutes, $seconds);
 }
 
 
