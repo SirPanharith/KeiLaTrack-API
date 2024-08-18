@@ -7,7 +7,7 @@ use App\Models\Setting;
 use App\Models\Player;
 use App\Models\HomeScore;
 use App\Models\SessionInvitation;
-use App\Http\Controllers\HomeAssist;
+use App\Http\HomeAssist;
 use App\Models\ManualPlayer;
 use App\Models\PlayerInfo;
 use App\Models\MatchSummary;
