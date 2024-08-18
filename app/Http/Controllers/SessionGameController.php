@@ -800,6 +800,7 @@ class SessionGameController extends Controller
                 $groupedSessions[] = [
                     'Session_ID' => $sessionGame->Session_ID,
                     'Session_Date' => $sessionGame->Session_Date,
+                    'Session_Time' => $sessionGame->Session_Time,
                 ];
             }
 
