@@ -225,7 +225,11 @@ Route::put('sessions/{sessionId}/players/{playerInfoId}/update-response', [Sessi
 ////display the session on upcoming session list
 Route::get('/session-games/team/{teamId}/datetime', [SessionGameController::class, 'getSessionsByTeamIdWithStatus2']);
 
+//Send Invitation to the Player via Player_Email
 Route::post('/send-session-invitation', [SessionGameController::class, 'sendSessionInvitationByEmail']);
+
+//Display the Player that Not yet been inviting to the team
+Route::get('/session/{sessionId}/players-without-invitation', [SessionGameController::class, 'getPlayersWithoutSessionInvitation']);
 
 
 

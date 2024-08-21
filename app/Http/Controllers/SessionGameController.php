@@ -918,4 +918,41 @@ class SessionGameController extends Controller
     return response()->json(['message' => 'Session invitation sent successfully'], 200);
 }
 
+public function getPlayersWithoutSessionInvitation($sessionId)
+{
+    try {
+        // Retrieve the session game by Session_ID
+        $sessionGame = SessionGame::with(['team.players.playerInfo'])
+                                  ->where('Session_ID', $sessionId)
+                                  ->firstOrFail();
+
+        // Get all players in the team
+        $teamPlayers = $sessionGame->team->players;
+
+        // Find players in the team without a session invitation
+        $playersWithoutInvitation = $teamPlayers->filter(function ($player) use ($sessionGame) {
+            return !$sessionGame->sessionInvitations->contains('PlayerInfo_ID', $player->PlayerInfo_ID);
+        })->map(function ($player) {
+            return [
+                'PlayerInfo_ID' => $player->PlayerInfo_ID,
+                'Player_Name' => $player->playerInfo->Player_Name ?? 'N/A',
+                'Player_Email' => $player->playerInfo->Player_Email ?? 'N/A',
+                'Team_ID' => $player->Team_ID,
+                'Player_ID' => $player->Player_ID,
+            ];
+        });
+
+        // Return the response
+        return response()->json([
+            'Session_ID' => $sessionId,
+            'Team_ID' => $sessionGame->Team_ID,
+            'Players' => $playersWithoutInvitation->values(), // Ensure the collection is indexed properly
+        ], 200);
+    } catch (\Exception $e) {
+        // Handle the exception and return an error response
+        return response()->json(['error' => $e->getMessage()], 500);
+    }
+}
+
+
 }
