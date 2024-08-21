@@ -13,6 +13,7 @@ use App\Models\PlayerInfo;
 use App\Models\MatchSummary;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
+
 use Mail;
 
 
@@ -871,6 +872,50 @@ class SessionGameController extends Controller
         }
     }
 
+    public function sendSessionInvitationByEmail(Request $request)
+{
+    $validated = $request->validate([
+        'Player_Email' => 'required|email',
+        'Session_ID' => 'required|exists:SessionGame,Session_ID',
+    ]);
 
+    // Find the player by email
+    $playerInfo = PlayerInfo::where('Player_Email', $validated['Player_Email'])->first();
+
+    if (!$playerInfo) {
+        return response()->json(['error' => 'Player not found'], 404);
+    }
+
+    // Find the session game by Session_ID
+    $sessionGame = SessionGame::with('team')->findOrFail($validated['Session_ID']);
+
+    // Check if the player is part of the team associated with the session
+    $player = Player::where('PlayerInfo_ID', $playerInfo->PlayerInfo_ID)
+                    ->where('Team_ID', $sessionGame->Team_ID)
+                    ->first();
+
+    if (!$player) {
+        return response()->json(['error' => 'Player is not part of the team associated with this session'], 404);
+    }
+
+    // Generate a token for the invitation
+    $token = Str::random(32);
+
+    // Create the session invitation
+    $invitation = SessionInvitation::create([
+        'Session_ID' => $sessionGame->Session_ID,
+        'PlayerInfo_ID' => $playerInfo->PlayerInfo_ID,
+        'token' => $token,
+        'Response_ID' => 2, // Default to "not responded" state
+    ]);
+
+    // Generate the invitation link
+    $link = url('/session-invitation/' . $token);
+
+    // Send the invitation email
+    Mail::to($validated['Player_Email'])->send(new \App\Mail\SessionInvitationEmail($link));
+
+    return response()->json(['message' => 'Session invitation sent successfully'], 200);
+}
 
 }
