@@ -922,7 +922,7 @@ public function getPlayersWithoutSessionInvitation($sessionId)
 {
     try {
         // Retrieve the session game by Session_ID
-        $sessionGame = SessionGame::with(['team.players.playerInfo'])
+        $sessionGame = SessionGame::with(['team.players.primaryPosition', 'team.players.secondaryPosition', 'team.players.playerInfo'])
                                   ->where('Session_ID', $sessionId)
                                   ->firstOrFail();
 
@@ -939,6 +939,8 @@ public function getPlayersWithoutSessionInvitation($sessionId)
                 'Player_Email' => $player->playerInfo->Player_Email ?? 'N/A',
                 'Team_ID' => $player->Team_ID,
                 'Player_ID' => $player->Player_ID,
+                'PrimaryPosition_ID' => $player->PrimaryPosition_ID,
+                'SecondaryPosition_ID' => $player->SecondaryPosition_ID,
             ];
         });
 
@@ -953,6 +955,7 @@ public function getPlayersWithoutSessionInvitation($sessionId)
         return response()->json(['error' => $e->getMessage()], 500);
     }
 }
+
 
 
 }
