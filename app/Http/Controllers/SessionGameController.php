@@ -28,38 +28,56 @@ class SessionGameController extends Controller
 
     // Store a new session game
     public function store(Request $request)
-    {
-        $validated = $request->validate([
-            'Session_Date' => 'required|date',
-            'Session_Duration' => 'required',
-            'Session_Time' => 'required',
-            'Session_Location' => 'required|string',
-            'Session_Note' => 'required|string',
-            'Team_ID' => 'required',
-            'ManualAway_Name' => 'nullable|string',
-            'ManualAway_Score' => 'nullable|integer',
+{
+    $validated = $request->validate([
+        'Session_Date' => 'required|date',
+        'Session_Duration' => 'required',
+        'Session_Time' => 'required',
+        'Field_Name' => 'required|string',
+        'Field_Number' => 'required|string',
+        'Field_Location' => 'required|string',
+        'Session_Note' => 'required|string',
+        'Team_ID' => 'required',
+        'ManualAway_Name' => 'nullable|string',
+        'ManualAway_Score' => 'nullable|integer',
+    ]);
+
+    // Combine the field name, number, and location into the Session_Location
+    $validated['Session_Location'] = $validated['Field_Name'] . ', ' . $validated['Field_Number'] . ', ' . $validated['Field_Location'];
+
+    // Remove the individual field inputs from the validated array
+    unset($validated['Field_Name'], $validated['Field_Number'], $validated['Field_Location']);
+
+    $sessionGame = SessionGame::create($validated);
+
+    // Send invitations to all players in the team
+    $players = Player::where('Team_ID', $validated['Team_ID'])->get();
+    foreach ($players as $player) {
+        $token = Str::random(32);
+        $invitation = SessionInvitation::create([
+            'Session_ID' => $sessionGame->Session_ID,
+            'PlayerInfo_ID' => $player->PlayerInfo_ID,
+            'token' => $token,
         ]);
 
-        $sessionGame = SessionGame::create($validated);
+        $link = url('/session-invitation/' . $token);
+        $email = $player->playerInfo->Player_Email;
 
-        // Send invitations to all players in the team
-        $players = Player::where('Team_ID', $validated['Team_ID'])->get();
-        foreach ($players as $player) {
-            $token = Str::random(32);
-            $invitation = SessionInvitation::create([
-                'Session_ID' => $sessionGame->Session_ID,
-                'PlayerInfo_ID' => $player->PlayerInfo_ID,
-                'token' => $token,
-            ]);
-
-            $link = url('/session-invitation/' . $token);
-            $email = $player->playerInfo->Player_Email;
-
-            Mail::to($email)->send(new \App\Mail\SessionInvitationEmail($link));
-        }
-
-        return response()->json($sessionGame, 201);
+        Mail::to($email)->send(new \App\Mail\SessionInvitationEmail($link));
     }
+
+    return response()->json([
+        'Session_ID' => $sessionGame->Session_ID,
+        'Session_Date' => $sessionGame->Session_Date,
+        'Session_Time' => $sessionGame->Session_Time,
+        'Session_Location' => $sessionGame->Session_Location,
+        'Session_Note' => $sessionGame->Session_Note,
+        'Team_ID' => $sessionGame->Team_ID,
+        'ManualAway_Name' => $sessionGame->ManualAway_Name,
+        'ManualAway_Score' => $sessionGame->ManualAway_Score,
+    ], 201);
+}
+
 
     // Show the invitation details
     public function showInvitation($token)
