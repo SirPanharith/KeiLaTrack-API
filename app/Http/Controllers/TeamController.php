@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Team;
 use App\Models\Player;
+use App\Models\SessionGame;
 use Illuminate\Http\Request;
 
 class TeamController extends Controller
@@ -75,14 +76,64 @@ class TeamController extends Controller
     // Display all team names based on Host_ID
     public function getTeamsByHost($hostId)
     {
-        $teams = Team::where('Host_ID', $hostId)->get(['Team_ID', 'Team_Name']);
-        $response = [
+        // Get teams with player and session game counts
+        $teams = Team::withCount(['players', 'sessionGames'])
+            ->where('Host_ID', $hostId)
+            ->get(['Team_ID', 'Team_Name']);
+
+        // Loop through each team to calculate additional details
+        $formattedTeams = $teams->map(function ($team) {
+            // Retrieve all session games for the team
+            $sessionGames = SessionGame::where('Team_ID', $team->Team_ID)->get();
+
+            $winCount = 0;  // Initialize win counter
+            $loseCount = 0; // Initialize lose counter
+            $drawCount = 0; // Initialize draw counter
+
+            // Prepare a list of sessions with their respective Session_Total_Goals, ManualAway_Score, and Result
+            $sessionDetails = $sessionGames->map(function ($sessionGame) use (&$winCount, &$loseCount, &$drawCount) {
+                // Calculate total goals using an external method or logic
+                $homeScoreController = new HomeScoreController();
+                $sessionTotalGoals = $homeScoreController->calculateSessionTotalGoals($sessionGame->Session_ID);
+                $manualAwayScore = $sessionGame->ManualAway_Score ?? 0;
+
+                // Determine the result based on the scores
+                $result = 'Draw';
+                if ($sessionTotalGoals > $manualAwayScore) {
+                    $result = 'Win';
+                    $winCount++; // Increment win counter
+                } elseif ($sessionTotalGoals < $manualAwayScore) {
+                    $result = 'Lose';
+                    $loseCount++; // Increment lose counter
+                } else {
+                    $drawCount++; // Increment draw counter
+                }
+
+                return [
+                    'Session_ID' => $sessionGame->Session_ID,
+                    'Session_Total_Goals' => $sessionTotalGoals,
+                    'ManualAway_Score' => $manualAwayScore,
+                    'Result' => $result, // Add the result field
+                ];
+            });
+
+            return [
+                'Team_ID' => $team->Team_ID,
+                'Team_Name' => $team->Team_Name,
+                'Total_Players' => $team->players_count,
+                'Total_Games' => $team->session_games_count,
+                'Total_Wins' => $winCount,   // Add the win count
+                'Total_Loses' => $loseCount, // Add the lose count
+                'Total_Draws' => $drawCount, // Add the draw count
+                'Sessions' => $sessionDetails->toArray(), // List of sessions with their details
+            ];
+        });
+
+        return response()->json([
             'Host_ID' => $hostId,
-            'teams' => $teams
-        ];
-        return response()->json($response);
+            'teams' => $formattedTeams,
+        ]);
     }
-    
 
     // Display all players based on Team_ID
     public function getPlayersByTeam($teamId)
