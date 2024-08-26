@@ -898,6 +898,26 @@ public function getSessionInfoByPlayerInfoId($playerInfoId)
     ]);
 }
 
+private function calculateMatchResult($sessionTotalGoals, $manualAwayScore)
+{
+    if ($sessionTotalGoals > $manualAwayScore) {
+        return 'Win';
+    } elseif ($sessionTotalGoals < $manualAwayScore) {
+        return 'Lose';
+    } else {
+        return 'Draw';
+    }
+}
+
+private function formatDuration($duration)
+{
+    if ($duration) {
+        $timeParts = explode(':', $duration);
+        return gmdate('i:s', ($timeParts[0] * 3600 + $timeParts[1] * 60 + $timeParts[2]));
+    }
+    return '00:00';
+}
+
 
 
 
