@@ -832,6 +832,7 @@ public function getSessionInfoByPlayerInfoId($playerInfoId)
 
             $sessionTotalGoals = $session->homeScores->count();
             $manualAwayScore = $session->ManualAway_Score ?? 0;
+            $manualAwayName = $session->ManualAway_Name ?? 'N/A';
             $result = $this->calculateMatchResult($sessionTotalGoals, $manualAwayScore);
 
             if ($result === 'Win') {
@@ -881,8 +882,9 @@ public function getSessionInfoByPlayerInfoId($playerInfoId)
                 'Session_ID' => $session->Session_ID,
                 'Session_Date' => $session->Session_Date,
                 'Session_Time' => $session->Session_Time,
-                'Session_Total_Goals' => $sessionTotalGoals,
+                'ManualAway_Name' => $manualAwayName,
                 'ManualAway_Score' => $manualAwayScore,
+                'Session_Total_Goals' => $sessionTotalGoals,
                 'Result' => $result,
                 'Player_Total_Goals' => $playerTotalGoals,
                 'Player_Total_Assists' => $playerTotalAssists,
@@ -913,6 +915,7 @@ public function getSessionInfoByPlayerInfoId($playerInfoId)
         'Data' => $teamData,
     ]);
 }
+
 
 
 
