@@ -804,10 +804,19 @@ public function getSessionInfoByPlayerInfoId($playerInfoId)
     $teamData = [];
 
     foreach ($players as $player) {
+        // Only include sessions where the player has accepted the invitation
         $sessions = SessionGame::where('Team_ID', $player->Team_ID)
             ->where('SessionStatus_ID', 1) // Filter sessions by SessionStatus_ID = 1
+            ->whereHas('sessionInvitations', function ($query) use ($playerInfoId) {
+                $query->where('PlayerInfo_ID', $playerInfoId)
+                      ->where('Response_ID', 1); // Include only accepted invitations
+            })
             ->with(['settings', 'homeScores', 'manualPlayers', 'homeScores.homeAssist'])
             ->get();
+
+        if ($sessions->isEmpty()) {
+            continue;
+        }
 
         $sessionDetails = [];
         $totalGames = 0;
@@ -897,6 +906,7 @@ public function getSessionInfoByPlayerInfoId($playerInfoId)
         'Data' => $teamData,
     ]);
 }
+
 
 private function calculateMatchResult($sessionTotalGoals, $manualAwayScore)
 {
