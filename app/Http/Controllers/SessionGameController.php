@@ -780,64 +780,115 @@ class SessionGameController extends Controller
 
 
 
-    public function getSessionInfoByPlayerInfoId($playerInfoId)
-    {
-        $players = Player::where('PlayerInfo_ID', $playerInfoId)->with('playerInfo', 'team')->get();
+public function getSessionInfoByPlayerInfoId($playerInfoId)
+{
+    $players = Player::where('PlayerInfo_ID', $playerInfoId)->with('playerInfo', 'team', 'primaryPosition', 'secondaryPosition')->get();
 
-        if ($players->isEmpty()) {
-            $playerInfo = PlayerInfo::find($playerInfoId);
+    if ($players->isEmpty()) {
+        $playerInfo = PlayerInfo::find($playerInfoId);
 
-            return response()->json([
-                'Player_Name' => $playerInfo->Player_Name,
-                'PlayerInfo_ID' => $playerInfo->PlayerInfo_ID,
-                // 'Player_Name' => $playerInfo['Player_Name'],
-                'Data' => [],
-            ]);
-        }
+        return response()->json([
+            'Player_Name' => $playerInfo->Player_Name,
+            'PlayerInfo_ID' => $playerInfo->PlayerInfo_ID,
+            'Data' => [],
+        ]);
+    }
 
-        $playerInfo = [
-            'PlayerInfo_ID' => $playerInfoId,
-            'Player_Name' => $players->first()->playerInfo->Player_Name ?? 'N/A',
-        ];
+    $playerInfo = [
+        'PlayerInfo_ID' => $playerInfoId,
+        'Player_Name' => $players->first()->playerInfo->Player_Name ?? 'N/A',
+    ];
 
-        
+    $sessionsData = [];
+
+    foreach ($players as $player) {
+        // Fetch all sessions where the team ID matches and the session status is active (SessionStatus_ID = 1)
+        $sessionGames = SessionGame::where('Team_ID', $player->Team_ID)
+            ->where('SessionStatus_ID', 1)
+            ->with(['team', 'settings', 'scoreBoard', 'homeScores.homeAssist'])
+            ->get();
 
         $sessions = [];
 
-        foreach ($players as $player) {
-            // Fetch session games where there are accepted invitations
-            $sessionGames = SessionGame::where('Team_ID', $player->Team_ID)
-                ->whereHas('sessionInvitations', function ($query) use ($playerInfoId) {
-                    $query->where('PlayerInfo_ID', $playerInfoId)
-                        ->where('Response_ID', 1);
-                })
-                ->get();
+        foreach ($sessionGames as $sessionGame) {
+            // Determine the result (Win, Lose, Draw)
+            $result = $this->determineMatchResult($sessionGame);
 
-            $groupedSessions = [];
-
-            foreach ($sessionGames as $sessionGame) {
-                $groupedSessions[] = [
-                    'Session_ID' => $sessionGame->Session_ID,
-                    'Session_Date' => $sessionGame->Session_Date,
-                    'Session_Time' => $sessionGame->Session_Time,
+            // Gather all goal details for the session
+            $goalDetails = $sessionGame->homeScores->map(function ($homeScore) {
+                return [
+                    'HomeScore_ID' => $homeScore->HomeScore_ID,
+                    'Goal_Player_ID' => $homeScore->Player_ID,
+                    'ManualPlayer_ID' => $homeScore->ManualPlayer_ID,
+                    'HomeAssist' => [
+                        'HomeAssist_ID' => $homeScore->homeAssist->HomeAssist_ID ?? null,
+                        'Assist_Player_ID' => $homeScore->homeAssist->Player_ID ?? null,
+                        'ManualPlayer_ID' => $homeScore->homeAssist->ManualPlayer_ID ?? null,
+                        'Session_ID' => $homeScore->Session_ID,
+                    ],
                 ];
-            }
+            })->toArray();
 
-            if (!empty($groupedSessions)) {
-                $sessions[] = [
-                    'Player_ID' => $player->Player_ID,
-                    'Team_Name' => $player->team->Team_Name ?? 'N/A',
-                    'Sessions' => $groupedSessions,
-                ];
-            }
+            // Calculate total duration in this session for the player
+            $totalDuration = MatchSummary::where('Session_ID', $sessionGame->Session_ID)
+                ->where('Player_ID', $player->Player_ID)
+                ->value('Total_Duration') ?? '00:00:00';
+
+            $sessions[] = [
+                'Session_ID' => $sessionGame->Session_ID,
+                'Session_Date' => $sessionGame->Session_Date,
+                'Session_Time' => $sessionGame->Session_Time,
+                'Session_Total_Goals' => $sessionGame->homeScores->count(),
+                'ManualAway_Score' => $sessionGame->ManualAway_Score,
+                'Result' => $result,
+                'Total_Duration' => $this->formatDuration($totalDuration),
+                'Goal_Details' => $goalDetails,
+            ];
         }
 
-        return response()->json([
-            'PlayerInfo_ID' => $playerInfo['PlayerInfo_ID'],
-            'Player_Name' => $playerInfo['Player_Name'],
-            'Data' => $sessions,
-        ]);
+        $sessionsData[] = [
+            'Player_ID' => $player->Player_ID,
+            'PrimaryPosition_ID' => $player->PrimaryPosition_ID,
+            'PrimaryPosition' => $player->primaryPosition->Position ?? 'N/A',
+            'SecondaryPosition_ID' => $player->SecondaryPosition_ID,
+            'SecondaryPosition' => $player->secondaryPosition->Position ?? 'N/A',
+            'Team_Name' => $player->team->Team_Name ?? 'N/A',
+            'Total_Games' => $sessionGames->count(),
+            'Total_Wins' => $sessionGames->where('result', 'Win')->count(),
+            'Total_Loses' => $sessionGames->where('result', 'Lose')->count(),
+            'Total_Draws' => $sessionGames->where('result', 'Draw')->count(),
+            'Sessions' => $sessions,
+        ];
     }
+
+    return response()->json([
+        'PlayerInfo_ID' => $playerInfo['PlayerInfo_ID'],
+        'Player_Name' => $playerInfo['Player_Name'],
+        'Data' => $sessionsData,
+    ]);
+}
+
+// Helper function to determine match result
+private function determineMatchResult($sessionGame)
+{
+    if ($sessionGame->homeScores->count() > $sessionGame->ManualAway_Score) {
+        return 'Win';
+    } elseif ($sessionGame->homeScores->count() < $sessionGame->ManualAway_Score) {
+        return 'Lose';
+    } else {
+        return 'Draw';
+    }
+}
+
+// Helper function to format duration
+private function formatDuration($duration)
+{
+    $timeParts = explode(':', $duration);
+    return sprintf('%02d:%02d', $timeParts[0], $timeParts[1]);
+}
+
+
+
 
     //Update Response ID in Upcoming session in mobile
     public function updateInvitationResponse(Request $request, $sessionId, $playerInfoId)
