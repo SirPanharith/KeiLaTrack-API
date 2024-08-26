@@ -896,7 +896,9 @@ public function getSessionInfoByPlayerInfoId($playerInfoId)
         $teamData[] = [
             'Player_ID' => $player->Player_ID,
             'PrimaryPosition_ID' => $player->PrimaryPosition_ID,
+            'PrimaryPosition' => $player->primaryPosition->Position ?? 'N/A',
             'SecondaryPosition_ID' => $player->SecondaryPosition_ID,
+            'SecondaryPosition' => $player->secondaryPosition->Position ?? 'N/A',
             'Team_Name' => $player->team->Team_Name ?? 'N/A',
             'Total_Games' => $totalGames,
             'Total_Wins' => $totalWins,
