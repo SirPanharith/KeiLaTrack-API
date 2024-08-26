@@ -782,7 +782,10 @@ class SessionGameController extends Controller
 
 public function getSessionInfoByPlayerInfoId($playerInfoId)
 {
-    $players = Player::where('PlayerInfo_ID', $playerInfoId)->with('playerInfo', 'team', 'primaryPosition', 'secondaryPosition')->get();
+    // Get all players for this PlayerInfo_ID
+    $players = Player::where('PlayerInfo_ID', $playerInfoId)
+        ->with('playerInfo', 'team')
+        ->get();
 
     if ($players->isEmpty()) {
         $playerInfo = PlayerInfo::find($playerInfoId);
@@ -799,94 +802,72 @@ public function getSessionInfoByPlayerInfoId($playerInfoId)
         'Player_Name' => $players->first()->playerInfo->Player_Name ?? 'N/A',
     ];
 
-    $sessionsData = [];
+    $sessions = [];
+    $totalGames = 0;
+    $totalWins = 0;
+    $totalLoses = 0;
+    $totalDraws = 0;
 
     foreach ($players as $player) {
-        // Fetch all sessions where the team ID matches and the session status is active (SessionStatus_ID = 1)
+        // Fetch session games where there are accepted invitations
         $sessionGames = SessionGame::where('Team_ID', $player->Team_ID)
-            ->where('SessionStatus_ID', 1)
-            ->with(['team', 'settings', 'scoreBoard', 'homeScores.homeAssist'])
+            ->whereHas('sessionInvitations', function ($query) use ($playerInfoId) {
+                $query->where('PlayerInfo_ID', $playerInfoId)
+                    ->where('Response_ID', 1);
+            })
             ->get();
 
-        $sessions = [];
+        $groupedSessions = [];
 
         foreach ($sessionGames as $sessionGame) {
+            // Calculate the total goals for the session
+            $sessionTotalGoals = HomeScore::where('Session_ID', $sessionGame->Session_ID)
+                ->sum('ScoreTime'); // Adjust this based on how you store goals
+
             // Determine the result (Win, Lose, Draw)
-            $result = $this->determineMatchResult($sessionGame);
+            $manualAwayScore = $sessionGame->ManualAway_Score ?? 0;
+            $result = 'Draw';
+            if ($sessionTotalGoals > $manualAwayScore) {
+                $result = 'Win';
+                $totalWins++;
+            } elseif ($sessionTotalGoals < $manualAwayScore) {
+                $result = 'Lose';
+                $totalLoses++;
+            } else {
+                $totalDraws++;
+            }
 
-            // Gather all goal details for the session
-            $goalDetails = $sessionGame->homeScores->map(function ($homeScore) {
-                return [
-                    'HomeScore_ID' => $homeScore->HomeScore_ID,
-                    'Goal_Player_ID' => $homeScore->Player_ID,
-                    'ManualPlayer_ID' => $homeScore->ManualPlayer_ID,
-                    'HomeAssist' => [
-                        'HomeAssist_ID' => $homeScore->homeAssist->HomeAssist_ID ?? null,
-                        'Assist_Player_ID' => $homeScore->homeAssist->Player_ID ?? null,
-                        'ManualPlayer_ID' => $homeScore->homeAssist->ManualPlayer_ID ?? null,
-                        'Session_ID' => $homeScore->Session_ID,
-                    ],
-                ];
-            })->toArray();
-
-            // Calculate total duration in this session for the player
-            $totalDuration = MatchSummary::where('Session_ID', $sessionGame->Session_ID)
-                ->where('Player_ID', $player->Player_ID)
-                ->value('Total_Duration') ?? '00:00:00';
-
-            $sessions[] = [
+            $groupedSessions[] = [
                 'Session_ID' => $sessionGame->Session_ID,
                 'Session_Date' => $sessionGame->Session_Date,
                 'Session_Time' => $sessionGame->Session_Time,
-                'Session_Total_Goals' => $sessionGame->homeScores->count(),
-                'ManualAway_Score' => $sessionGame->ManualAway_Score,
+                'Session_Total_Goals' => $sessionTotalGoals,
+                'ManualAway_Score' => $manualAwayScore,
                 'Result' => $result,
-                'Total_Duration' => $this->formatDuration($totalDuration),
-                'Goal_Details' => $goalDetails,
             ];
+
+            $totalGames++;
         }
 
-        $sessionsData[] = [
-            'Player_ID' => $player->Player_ID,
-            'PrimaryPosition_ID' => $player->PrimaryPosition_ID,
-            'PrimaryPosition' => $player->primaryPosition->Position ?? 'N/A',
-            'SecondaryPosition_ID' => $player->SecondaryPosition_ID,
-            'SecondaryPosition' => $player->secondaryPosition->Position ?? 'N/A',
-            'Team_Name' => $player->team->Team_Name ?? 'N/A',
-            'Total_Games' => $sessionGames->count(),
-            'Total_Wins' => $sessionGames->where('result', 'Win')->count(),
-            'Total_Loses' => $sessionGames->where('result', 'Lose')->count(),
-            'Total_Draws' => $sessionGames->where('result', 'Draw')->count(),
-            'Sessions' => $sessions,
-        ];
+        if (!empty($groupedSessions)) {
+            $sessions[] = [
+                'Player_ID' => $player->Player_ID,
+                'Team_Name' => $player->team->Team_Name ?? 'N/A',
+                'Total_Games' => $totalGames,
+                'Total_Wins' => $totalWins,
+                'Total_Loses' => $totalLoses,
+                'Total_Draws' => $totalDraws,
+                'Sessions' => $groupedSessions,
+            ];
+        }
     }
 
     return response()->json([
         'PlayerInfo_ID' => $playerInfo['PlayerInfo_ID'],
         'Player_Name' => $playerInfo['Player_Name'],
-        'Data' => $sessionsData,
+        'Data' => $sessions,
     ]);
 }
-
-// Helper function to determine match result
-private function determineMatchResult($sessionGame)
-{
-    if ($sessionGame->homeScores->count() > $sessionGame->ManualAway_Score) {
-        return 'Win';
-    } elseif ($sessionGame->homeScores->count() < $sessionGame->ManualAway_Score) {
-        return 'Lose';
-    } else {
-        return 'Draw';
-    }
-}
-
-// Helper function to format duration
-private function formatDuration($duration)
-{
-    $timeParts = explode(':', $duration);
-    return sprintf('%02d:%02d', $timeParts[0], $timeParts[1]);
-}
-
 
 
 
