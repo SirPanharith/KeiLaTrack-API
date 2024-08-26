@@ -825,7 +825,7 @@ public function getSessionInfoByPlayerInfoId($playerInfoId)
         $totalDraws = 0;
         $totalGoalsForTeam = 0;
         $totalAssistsForTeam = 0;
-        $totalTimePlayedForTeam = 0;
+        $totalTimePlayedForTeam = 0; // To be accumulated in seconds
 
         foreach ($sessions as $session) {
             $totalGames++;
@@ -853,8 +853,15 @@ public function getSessionInfoByPlayerInfoId($playerInfoId)
             $totalGoalsForTeam += $playerTotalGoals;
             $totalAssistsForTeam += $playerTotalAssists;
 
-            $matchDuration = $this->formatDuration($session->Total_Duration);
-            $totalTimePlayedForTeam += strtotime($matchDuration) - strtotime('TODAY');
+            // Fetch the correct Total_Duration from MatchSummary
+            $matchSummary = MatchSummary::where('Session_ID', $session->Session_ID)
+                ->where('Player_ID', $player->Player_ID)
+                ->first();
+
+            $durationInSeconds = $matchSummary ? strtotime($matchSummary->Total_Duration) - strtotime('TODAY') : 0;
+            $totalTimePlayedForTeam += $durationInSeconds;
+
+            $formattedDuration = gmdate('H:i:s', $durationInSeconds);
 
             $goalDetails = $session->homeScores->map(function ($homeScore) {
                 return [
@@ -879,7 +886,7 @@ public function getSessionInfoByPlayerInfoId($playerInfoId)
                 'Result' => $result,
                 'Player_Total_Goals' => $playerTotalGoals,
                 'Player_Total_Assists' => $playerTotalAssists,
-                'Total_Duration' => $matchDuration,
+                'Total_Duration' => $formattedDuration,
                 'Goal_Details' => $goalDetails
             ];
         }
@@ -906,6 +913,8 @@ public function getSessionInfoByPlayerInfoId($playerInfoId)
         'Data' => $teamData,
     ]);
 }
+
+
 
 
 private function calculateMatchResult($sessionTotalGoals, $manualAwayScore)
