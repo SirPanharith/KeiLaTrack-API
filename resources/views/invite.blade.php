@@ -66,21 +66,6 @@
             border-radius: 10px;
             background-color: #4CAF50;
         }
-
-        .input-group select {
-        background-color: #388E3C; /* Green background */
-        color: white; /* White text */
-        border: none;
-        padding: 0.5rem;
-        border-radius: 50px;
-        outline: none;
-        width: 100%;
-        appearance: none;
-    }
-
-    .input-group select:focus {
-        background-color: #4CAF50; /* Slightly lighter green on focus */
-    }
     </style>
 </head>
 <body>
@@ -106,29 +91,27 @@
             <input type="hidden" name="team_id" value="{{ $team_id }}">
             <input type="hidden" name="invitation_id" value="{{ $invitation_id }}">
             <div class="mb-4">
-    <label class="block text-white text-sm mb-2" for="primaryPosition">Primary Position:</label>
-    <div class="input-group">
-        <select id="primaryPosition" name="primaryPosition">
-            <option value="1">Striker</option>
-            <option value="2">Midfielder</option>
-            <option value="3">Defender</option>
-            <option value="4">Goalkeeper</option>
-        </select>
-    </div>
-</div>
-
-<div class="mb-4">
-    <label class="block text-white text-sm mb-2" for="secondaryPosition">Secondary Position:</label>
-    <div class="input-group">
-        <select id="secondaryPosition" name="secondaryPosition">
-            <option value="1">Striker</option>
-            <option value="2">Midfielder</option>
-            <option value="3">Defender</option>
-            <option value="4">Goalkeeper</option>
-        </select>
-    </div>
-</div>
-
+                <label class="block text-white text-sm mb-2" for="primaryPosition">Primary Position:</label>
+                <div class="input-group">
+                    <select id="primaryPosition" name="primaryPosition">
+                        <option value="1">Striker</option>
+                        <option value="2">Midfielder</option>
+                        <option value="3">Defender</option>
+                        <option value="4">Goalkeeper</option>
+                    </select>
+                </div>
+            </div>
+            <div class="mb-4">
+                <label class="block text-white text-sm mb-2" for="secondaryPosition">Secondary Position:</label>
+                <div class="input-group">
+                    <select id="secondaryPosition" name="secondaryPosition">
+                        <option value="1">Striker</option>
+                        <option value="2">Midfielder</option>
+                        <option value="3">Defender</option>
+                        <option value="4">Goalkeeper</option>
+                    </select>
+                </div>
+            </div>
             <div class="flex justify-between">
                 <button type="submit" class="btn accept text-white font-bold">Accept</button>
                 <!-- <button type="button" class="btn reject text-white font-bold">Reject</button> -->
