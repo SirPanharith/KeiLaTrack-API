@@ -91,27 +91,39 @@
             <input type="hidden" name="team_id" value="{{ $team_id }}">
             <input type="hidden" name="invitation_id" value="{{ $invitation_id }}">
             <div class="mb-4">
-                <label class="block text-white text-sm mb-2" for="primaryPosition">Primary Position:</label>
-                <div class="input-group">
-                    <select id="primaryPosition" name="primaryPosition">
-                        <option value="1">Striker</option>
-                        <option value="2">Midfielder</option>
-                        <option value="3">Defender</option>
-                        <option value="4">Goalkeeper</option>
-                    </select>
-                </div>
-            </div>
-            <div class="mb-4">
-                <label class="block text-white text-sm mb-2" for="secondaryPosition">Secondary Position:</label>
-                <div class="input-group">
-                    <select id="secondaryPosition" name="secondaryPosition">
-                        <option value="1">Striker</option>
-                        <option value="2">Midfielder</option>
-                        <option value="3">Defender</option>
-                        <option value="4">Goalkeeper</option>
-                    </select>
-                </div>
-            </div>
+    <label class="block text-white text-sm mb-2" for="primaryPosition">Primary Position:</label>
+    <div class="input-group relative">
+        <select id="primaryPosition" name="primaryPosition" class="block appearance-none w-full bg-transparent border-none text-white py-2 px-3 pr-8 leading-tight focus:outline-none focus:ring-0">
+            <option value="1" class="bg-custom-green">Striker</option>
+            <option value="2" class="bg-custom-green">Midfielder</option>
+            <option value="3" class="bg-custom-green">Defender</option>
+            <option value="4" class="bg-custom-green">Goalkeeper</option>
+        </select>
+        <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-white">
+            <svg class="fill-current h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20">
+                <path d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" />
+            </svg>
+        </div>
+    </div>
+</div>
+
+<div class="mb-4">
+    <label class="block text-white text-sm mb-2" for="secondaryPosition">Secondary Position:</label>
+    <div class="input-group relative">
+        <select id="secondaryPosition" name="secondaryPosition" class="block appearance-none w-full bg-transparent border-none text-white py-2 px-3 pr-8 leading-tight focus:outline-none focus:ring-0">
+            <option value="1" class="bg-custom-green">Striker</option>
+            <option value="2" class="bg-custom-green">Midfielder</option>
+            <option value="3" class="bg-custom-green">Defender</option>
+            <option value="4" class="bg-custom-green">Goalkeeper</option>
+        </select>
+        <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-white">
+            <svg class="fill-current h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20">
+                <path d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" />
+            </svg>
+        </div>
+    </div>
+</div>
+
             <div class="flex justify-between">
                 <button type="submit" class="btn accept text-white font-bold">Accept</button>
                 <!-- <button type="button" class="btn reject text-white font-bold">Reject</button> -->
