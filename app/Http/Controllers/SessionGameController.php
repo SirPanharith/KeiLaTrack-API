@@ -606,8 +606,8 @@ class SessionGameController extends Controller
     try {
         // Fetch the current session game by Session_ID
         $sessionGame = SessionGame::with(['settings', 'players.primaryPosition', 'players.secondaryPosition', 'team'])
-                                    ->where('Session_ID', $sessionId)
-                                    ->firstOrFail();
+            ->where('Session_ID', $sessionId)
+            ->firstOrFail();
 
         // Filter players to match the specified Player_ID
         $player = $sessionGame->players->filter(function ($player) use ($playerId) {
@@ -626,24 +626,15 @@ class SessionGameController extends Controller
             return response()->json(['message' => 'Player not found in this session'], 404);
         }
 
-        // Get the session invitation where Response_ID is 1 (accepted)
-        $invitation = SessionInvitation::where('Session_ID', $sessionId)
-            ->where('PlayerInfo_ID', $player['PlayerInfo_ID'])
-            ->where('Response_ID', 1)
-            ->first();
-
-        if (!$invitation) {
-            return response()->json(['message' => 'Invitation not found or not accepted'], 404);
-        }
-
         // Get the list of assists for this player in this session
         $assists = HomeAssist::where('Session_ID', $sessionId)
             ->where('Player_ID', $playerId)
             ->get(['HomeAssist_ID', 'Session_ID', 'Player_ID', 'ManualPlayer_ID']);
 
-        // Get all sessions the player has participated in and gather details for each session
-        $allSessions = SessionGame::whereHas('players', function ($query) use ($playerId) {
-            $query->where('Player_ID', $playerId);
+        // Get all sessions the player has participated in where they accepted the invitation
+        $allSessions = SessionGame::whereHas('sessionInvitations', function ($query) use ($player) {
+            $query->where('PlayerInfo_ID', $player['PlayerInfo_ID'])
+                ->where('Response_ID', 1); // Filter by accepted invitations
         })->get()->map(function ($session) use ($playerId) {
             // Calculate total goals for this session
             $totalGoals = HomeScore::where('Session_ID', $session->Session_ID)
@@ -679,7 +670,7 @@ class SessionGameController extends Controller
         // Filter sessions to only include those before the current session
         $priorSessions = $allSessions->filter(function ($session) use ($sessionGame) {
             return $session['Session_Date'] < $sessionGame->Session_Date ||
-                   ($session['Session_Date'] == $sessionGame->Session_Date && $session['Session_Time'] < $sessionGame->Session_Time);
+                ($session['Session_Date'] == $sessionGame->Session_Date && $session['Session_Time'] < $sessionGame->Session_Time);
         });
 
         // Sort the prior sessions by date and time, most recent on top
@@ -726,7 +717,6 @@ class SessionGameController extends Controller
                 'Total_Duration' => '-------',
             ],
         ];
-        
 
         // Get the first setting
         $setting = $sessionGame->settings->first();
@@ -785,12 +775,6 @@ class SessionGameController extends Controller
         return response()->json(['error' => $e->getMessage()], 500);
     }
 }
-
-
-
-    
-
-
 
 
 public function getSessionInfoByPlayerInfoId($playerInfoId)
