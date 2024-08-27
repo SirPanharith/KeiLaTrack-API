@@ -24,18 +24,14 @@
         }
         .input-group input,
         .input-group select {
-            background-color: #388E3C; /* Green background */
-            color: white; /* White text */
+            background-color: transparent;
             border: none;
             outline: none;
-            padding: 0.5rem;
+            color: white;
             width: 100%;
-            border-radius: 5px;
-            appearance: none;
         }
-        .input-group select option {
-            background-color: #388E3C; /* Green background for options */
-            color: white; /* White text for options */
+        .input-group input::placeholder {
+            color: rgba(255, 255, 255, 0.7);
         }
         .input-group:hover {
             background-color: rgba(255, 255, 255, 0.3);
@@ -69,6 +65,18 @@
             padding: 2rem;
             border-radius: 10px;
             background-color: #4CAF50;
+        }
+        select {
+            background-color: #388E3C; /* Green background for the dropdown */
+            color: white; /* White text */
+            border: none;
+            padding: 0.5rem;
+            border-radius: 5px;
+            outline: none;
+        }
+        select option {
+            background-color: #388E3C; /* Green background for options */
+            color: white; /* White text for options */
         }
     </style>
 </head>
@@ -116,10 +124,11 @@
                     </select>
                 </div>
             </div>
-            <div class="flex justify-between">
-                <button type="submit" class="btn accept text-white font-bold">Accept</button>
-                <!-- <button type="button" class="btn reject text-white font-bold">Reject</button> -->
-            </div>
+            <div class="flex justify-center items-center">
+    <button type="submit" class="btn accept text-white font-bold mr-2">Accept</button>
+    <!-- <button type="button" class="btn reject text-white font-bold">Reject</button> -->
+</div>
+
         </form>
     </div>
     <script src="{{ asset('js/app.js') }}"></script>
