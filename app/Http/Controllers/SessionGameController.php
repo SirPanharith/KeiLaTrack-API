@@ -606,8 +606,8 @@ class SessionGameController extends Controller
     try {
         // Fetch the current session game by Session_ID
         $sessionGame = SessionGame::with(['settings', 'players.primaryPosition', 'players.secondaryPosition', 'team'])
-            ->where('Session_ID', $sessionId)
-            ->firstOrFail();
+                                    ->where('Session_ID', $sessionId)
+                                    ->firstOrFail();
 
         // Filter players to match the specified Player_ID
         $player = $sessionGame->players->filter(function ($player) use ($playerId) {
@@ -631,10 +631,10 @@ class SessionGameController extends Controller
             ->where('Player_ID', $playerId)
             ->get(['HomeAssist_ID', 'Session_ID', 'Player_ID', 'ManualPlayer_ID']);
 
-        // Get all sessions the player has participated in where they accepted the invitation
+        // Get all sessions the player has participated in with Response_ID = 1
         $allSessions = SessionGame::whereHas('sessionInvitations', function ($query) use ($player) {
             $query->where('PlayerInfo_ID', $player['PlayerInfo_ID'])
-                ->where('Response_ID', 1); // Filter by accepted invitations
+                  ->where('Response_ID', 1); // Only include sessions where the player accepted the invitation
         })->get()->map(function ($session) use ($playerId) {
             // Calculate total goals for this session
             $totalGoals = HomeScore::where('Session_ID', $session->Session_ID)
@@ -670,7 +670,7 @@ class SessionGameController extends Controller
         // Filter sessions to only include those before the current session
         $priorSessions = $allSessions->filter(function ($session) use ($sessionGame) {
             return $session['Session_Date'] < $sessionGame->Session_Date ||
-                ($session['Session_Date'] == $sessionGame->Session_Date && $session['Session_Time'] < $sessionGame->Session_Time);
+                   ($session['Session_Date'] == $sessionGame->Session_Date && $session['Session_Time'] < $sessionGame->Session_Time);
         });
 
         // Sort the prior sessions by date and time, most recent on top
@@ -717,6 +717,7 @@ class SessionGameController extends Controller
                 'Total_Duration' => '-------',
             ],
         ];
+        
 
         // Get the first setting
         $setting = $sessionGame->settings->first();
