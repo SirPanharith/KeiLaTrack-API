@@ -635,7 +635,13 @@ class SessionGameController extends Controller
         $allSessions = SessionGame::whereHas('sessionInvitations', function ($query) use ($player) {
             $query->where('PlayerInfo_ID', $player['PlayerInfo_ID'])
                   ->where('Response_ID', 1); // Only include sessions where the player accepted the invitation
-        })->get()->map(function ($session) use ($playerId) {
+        })->get();
+
+        // Extract the Session_IDs where the player accepted the invitation
+        $acceptedSessionIds = $allSessions->pluck('Session_ID')->toArray();
+
+        // Map the sessions to get the details for each session
+        $allSessions = $allSessions->map(function ($session) use ($playerId) {
             // Calculate total goals for this session
             $totalGoals = HomeScore::where('Session_ID', $session->Session_ID)
                 ->where('Player_ID', $playerId)
@@ -767,6 +773,7 @@ class SessionGameController extends Controller
             'Team_Name' => $teamName,
             'Session_Location' => $sessionGame->Session_Location,
             'Total_Duration' => $formattedDuration, // Include the total duration in MM:SS format
+            'Accepted_Session_ID' => $acceptedSessionIds, // List of Accepted Session IDs
             '1_Prior_Session' => $responseSessions['1_Prior_Session'], // Most recent prior session
             '2_Prior_Session' => $responseSessions['2_Prior_Session'],
             '3_Prior_Session' => $responseSessions['3_Prior_Session'],
@@ -776,6 +783,7 @@ class SessionGameController extends Controller
         return response()->json(['error' => $e->getMessage()], 500);
     }
 }
+
 
 
 public function getSessionInfoByPlayerInfoId($playerInfoId)
