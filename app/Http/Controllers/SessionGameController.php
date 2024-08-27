@@ -624,51 +624,46 @@ class SessionGameController extends Controller
                 return response()->json(['message' => 'Player not found in this session'], 404);
             }
     
-            // Get all session IDs where the player accepted the invitation (Response_ID = 1)
-            $allSessionIds = SessionInvitation::where('PlayerInfo_ID', $player['PlayerInfo_ID'])
-                ->where('Response_ID', 1)
-                ->pluck('Session_ID')
-                ->toArray();
-    
             // Get the list of assists for this player in this session
             $assists = HomeAssist::where('Session_ID', $sessionId)
                 ->where('Player_ID', $playerId)
                 ->get(['HomeAssist_ID', 'Session_ID', 'Player_ID', 'ManualPlayer_ID']);
     
             // Get all sessions the player has participated in with Response_ID = 1
-            $allSessions = SessionGame::whereIn('Session_ID', $allSessionIds)
-                ->get()
-                ->map(function ($session) use ($playerId) {
-                    // Calculate total goals for this session
-                    $totalGoals = HomeScore::where('Session_ID', $session->Session_ID)
-                        ->where('Player_ID', $playerId)
-                        ->count();
+            $allSessions = SessionGame::whereHas('sessionInvitations', function ($query) use ($player) {
+                $query->where('PlayerInfo_ID', $player['PlayerInfo_ID'])
+                      ->where('Response_ID', 1); // Only include sessions where the player accepted the invitation
+            })->get()->map(function ($session) use ($playerId) {
+                // Calculate total goals for this session
+                $totalGoals = HomeScore::where('Session_ID', $session->Session_ID)
+                    ->where('Player_ID', $playerId)
+                    ->count();
     
-                    // Calculate total assists for this session
-                    $totalAssists = HomeAssist::where('Session_ID', $session->Session_ID)
-                        ->where('Player_ID', $playerId)
-                        ->count();
+                // Calculate total assists for this session
+                $totalAssists = HomeAssist::where('Session_ID', $session->Session_ID)
+                    ->where('Player_ID', $playerId)
+                    ->count();
     
-                    // Get total duration for the player in this session and format it to MM:SS
-                    $totalDuration = MatchSummary::where('Session_ID', $session->Session_ID)
-                        ->where('Player_ID', $playerId)
-                        ->value('Total_Duration') ?? '00:00:00';
+                // Get total duration for the player in this session and format it to MM:SS
+                $totalDuration = MatchSummary::where('Session_ID', $session->Session_ID)
+                    ->where('Player_ID', $playerId)
+                    ->value('Total_Duration') ?? '00:00:00';
     
-                    // Convert the duration to seconds
-                    $durationInSeconds = strtotime($totalDuration) - strtotime('TODAY');
+                // Convert the duration to seconds
+                $durationInSeconds = strtotime($totalDuration) - strtotime('TODAY');
     
-                    // Format the duration to MM:SS
-                    $formattedDuration = gmdate('i:s', $durationInSeconds);
+                // Format the duration to MM:SS
+                $formattedDuration = gmdate('i:s', $durationInSeconds);
     
-                    return [
-                        'Session_ID' => $session->Session_ID,
-                        'Session_Date' => $session->Session_Date,
-                        'Session_Time' => $session->Session_Time,
-                        'Total_Goals' => $totalGoals,
-                        'Total_Assists' => $totalAssists,
-                        'Total_Duration' => $formattedDuration,
-                    ];
-                });
+                return [
+                    'Session_ID' => $session->Session_ID,
+                    'Session_Date' => $session->Session_Date,
+                    'Session_Time' => $session->Session_Time,
+                    'Total_Goals' => $totalGoals,
+                    'Total_Assists' => $totalAssists,
+                    'Total_Duration' => $formattedDuration,
+                ];
+            });
     
             // Filter sessions to only include those before the current session
             $priorSessions = $allSessions->filter(function ($session) use ($sessionGame) {
@@ -720,7 +715,11 @@ class SessionGameController extends Controller
                     'Total_Duration' => '-------',
                 ],
             ];
-            
+    
+            // Get all session IDs from getSessionInfoByPlayerInfoId based on Player_ID
+            $sessionIds = SessionGame::whereHas('players', function ($query) use ($playerId) {
+                $query->where('Player_ID', $playerId);
+            })->pluck('Session_ID');
     
             // Get the first setting
             $setting = $sessionGame->settings->first();
@@ -770,16 +769,17 @@ class SessionGameController extends Controller
                 'Team_Name' => $teamName,
                 'Session_Location' => $sessionGame->Session_Location,
                 'Total_Duration' => $formattedDuration, // Include the total duration in MM:SS format
-                'All_Session_IDs' => $allSessionIds, // Include all session IDs where the player participated
                 '1_Prior_Session' => $responseSessions['1_Prior_Session'], // Most recent prior session
                 '2_Prior_Session' => $responseSessions['2_Prior_Session'],
                 '3_Prior_Session' => $responseSessions['3_Prior_Session'],
+                'All_Session_IDs' => $sessionIds // Add the list of all session IDs based on Player_ID
             ]);
         } catch (\Exception $e) {
             // Handle or log the exception
             return response()->json(['error' => $e->getMessage()], 500);
         }
     }
+    
     
     
     
