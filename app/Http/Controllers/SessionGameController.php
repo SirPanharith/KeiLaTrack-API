@@ -626,6 +626,16 @@ class SessionGameController extends Controller
             return response()->json(['message' => 'Player not found in this session'], 404);
         }
 
+        // Get the session invitation where Response_ID is 1 (accepted)
+        $invitation = SessionInvitation::where('Session_ID', $sessionId)
+            ->where('PlayerInfo_ID', $player['PlayerInfo_ID'])
+            ->where('Response_ID', 1)
+            ->first();
+
+        if (!$invitation) {
+            return response()->json(['message' => 'Invitation not found or not accepted'], 404);
+        }
+
         // Get the list of assists for this player in this session
         $assists = HomeAssist::where('Session_ID', $sessionId)
             ->where('Player_ID', $playerId)
