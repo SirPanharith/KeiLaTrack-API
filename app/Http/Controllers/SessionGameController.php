@@ -631,51 +631,51 @@ class SessionGameController extends Controller
                 ->where('Player_ID', $playerId)
                 ->get(['HomeAssist_ID', 'Session_ID', 'Player_ID', 'ManualPlayer_ID']);
     
-            // Get all SessionInvitation records where the player accepted the invitation (Response_ID = 1)
+            // Get all session invitations where the player accepted the invitation (Response_ID = 1)
             $acceptedInvitations = SessionInvitation::where('PlayerInfo_ID', $player['PlayerInfo_ID'])
-                ->where('Response_ID', 1)
-                ->get(['SessionInvitation_ID', 'Session_ID']);
+                ->where('Response_ID', 1) // Only include accepted invitations
+                ->get();
     
-            // Extract the SessionInvitation_IDs based on Session_IDs where the player accepted
-            $acceptedSessionInvitations = $acceptedInvitations->pluck('SessionInvitation_ID')->toArray();
+            // Extract the SessionInvitation_IDs from the accepted invitations
+            $acceptedSessionInvitationIds = $acceptedInvitations->pluck('SessionInvitation_ID')->toArray();
     
-            // Count the accepted sessions
-            $acceptedSessionCount = count($acceptedSessionInvitations);
+            // Count the accepted invitations
+            $acceptedSessionCount = count($acceptedSessionInvitationIds);
     
-            // Get details of all sessions where the player accepted the invitation
-            $allSessions = SessionGame::whereIn('Session_ID', $acceptedInvitations->pluck('Session_ID'))
-                ->get()
-                ->map(function ($session) use ($playerId) {
-                    // Calculate total goals for this session
-                    $totalGoals = HomeScore::where('Session_ID', $session->Session_ID)
-                        ->where('Player_ID', $playerId)
-                        ->count();
+            // Get the session details for those accepted invitations
+            $allSessions = $acceptedInvitations->map(function ($invitation) use ($playerId) {
+                $session = SessionGame::find($invitation->Session_ID);
     
-                    // Calculate total assists for this session
-                    $totalAssists = HomeAssist::where('Session_ID', $session->Session_ID)
-                        ->where('Player_ID', $playerId)
-                        ->count();
+                // Calculate total goals for this session
+                $totalGoals = HomeScore::where('Session_ID', $session->Session_ID)
+                    ->where('Player_ID', $playerId)
+                    ->count();
     
-                    // Get total duration for the player in this session and format it to MM:SS
-                    $totalDuration = MatchSummary::where('Session_ID', $session->Session_ID)
-                        ->where('Player_ID', $playerId)
-                        ->value('Total_Duration') ?? '00:00:00';
+                // Calculate total assists for this session
+                $totalAssists = HomeAssist::where('Session_ID', $session->Session_ID)
+                    ->where('Player_ID', $playerId)
+                    ->count();
     
-                    // Convert the duration to seconds
-                    $durationInSeconds = strtotime($totalDuration) - strtotime('TODAY');
+                // Get total duration for the player in this session and format it to MM:SS
+                $totalDuration = MatchSummary::where('Session_ID', $session->Session_ID)
+                    ->where('Player_ID', $playerId)
+                    ->value('Total_Duration') ?? '00:00:00';
     
-                    // Format the duration to MM:SS
-                    $formattedDuration = gmdate('i:s', $durationInSeconds);
+                // Convert the duration to seconds
+                $durationInSeconds = strtotime($totalDuration) - strtotime('TODAY');
     
-                    return [
-                        'Session_ID' => $session->Session_ID,
-                        'Session_Date' => $session->Session_Date,
-                        'Session_Time' => $session->Session_Time,
-                        'Total_Goals' => $totalGoals,
-                        'Total_Assists' => $totalAssists,
-                        'Total_Duration' => $formattedDuration,
-                    ];
-                });
+                // Format the duration to MM:SS
+                $formattedDuration = gmdate('i:s', $durationInSeconds);
+    
+                return [
+                    'Session_ID' => $session->Session_ID,
+                    'Session_Date' => $session->Session_Date,
+                    'Session_Time' => $session->Session_Time,
+                    'Total_Goals' => $totalGoals,
+                    'Total_Assists' => $totalAssists,
+                    'Total_Duration' => $formattedDuration,
+                ];
+            });
     
             // Filter sessions to only include those before the current session
             $priorSessions = $allSessions->filter(function ($session) use ($sessionGame) {
@@ -776,8 +776,8 @@ class SessionGameController extends Controller
                 'Team_Name' => $teamName,
                 'Session_Location' => $sessionGame->Session_Location,
                 'Total_Duration' => $formattedDuration, // Include the total duration in MM:SS format
-                'Accepted_SessionInvitation_ID' => $acceptedSessionInvitations, // List of Accepted SessionInvitation IDs
-                'Accepted_Session_Count' => $acceptedSessionCount, // Count of Accepted Session IDs
+                'Accepted_Session_Invitation_ID' => $acceptedSessionInvitationIds, // List of Accepted Session Invitation IDs
+                'Accepted_Session_Count' => $acceptedSessionCount, // Count of Accepted Session Invitations
                 '1_Prior_Session' => $responseSessions['1_Prior_Session'], // Most recent prior session
                 '2_Prior_Session' => $responseSessions['2_Prior_Session'],
                 '3_Prior_Session' => $responseSessions['3_Prior_Session'],
@@ -787,7 +787,7 @@ class SessionGameController extends Controller
             return response()->json(['error' => $e->getMessage()], 500);
         }
     }
-    
+     
 
 
 
