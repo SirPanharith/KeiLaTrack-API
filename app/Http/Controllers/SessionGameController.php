@@ -599,8 +599,6 @@ class SessionGameController extends Controller
         }
     }
 
-
-
     public function getSessionGameBySessionAndPlayer($sessionId, $playerId)
     {
         try {
@@ -631,21 +629,25 @@ class SessionGameController extends Controller
                 ->where('Player_ID', $playerId)
                 ->get(['HomeAssist_ID', 'Session_ID', 'Player_ID', 'ManualPlayer_ID']);
     
-            // Get all session invitations where the player accepted the invitation (Response_ID = 1)
-            $acceptedInvitations = SessionInvitation::where('PlayerInfo_ID', $player['PlayerInfo_ID'])
-                ->where('Response_ID', 1) // Only include accepted invitations
-                ->get();
+            // Get all session invitations where the player participated (Response_ID = 1)
+            $acceptedSessionInvitations = SessionInvitation::where('PlayerInfo_ID', $player['PlayerInfo_ID'])
+                ->where('Response_ID', 1)
+                ->get(['SessionInvitation_ID', 'Session_ID']);
     
-            // Extract the SessionInvitation_IDs from the accepted invitations
-            $acceptedSessionInvitationIds = $acceptedInvitations->pluck('SessionInvitation_ID')->toArray();
+            // Extract the SessionInvitation_IDs for the accepted sessions
+            $acceptedSessionInvitationIds = $acceptedSessionInvitations->pluck('SessionInvitation_ID')->toArray();
     
-            // Count the accepted invitations
+            // Count the accepted session invitations
             $acceptedSessionCount = count($acceptedSessionInvitationIds);
     
-            // Get the session details for those accepted invitations
-            $allSessions = $acceptedInvitations->map(function ($invitation) use ($playerId) {
-                $session = SessionGame::find($invitation->Session_ID);
+            // Get all sessions the player has participated in with Response_ID = 1
+            $allSessions = SessionGame::whereHas('sessionInvitations', function ($query) use ($player) {
+                $query->where('PlayerInfo_ID', $player['PlayerInfo_ID'])
+                      ->where('Response_ID', 1); // Only include sessions where the player accepted the invitation
+            })->get();
     
+            // Map the sessions to get the details for each session
+            $allSessions = $allSessions->map(function ($session) use ($playerId) {
                 // Calculate total goals for this session
                 $totalGoals = HomeScore::where('Session_ID', $session->Session_ID)
                     ->where('Player_ID', $playerId)
@@ -727,6 +729,7 @@ class SessionGameController extends Controller
                     'Total_Duration' => '-------',
                 ],
             ];
+            
     
             // Get the first setting
             $setting = $sessionGame->settings->first();
@@ -777,7 +780,7 @@ class SessionGameController extends Controller
                 'Session_Location' => $sessionGame->Session_Location,
                 'Total_Duration' => $formattedDuration, // Include the total duration in MM:SS format
                 'Accepted_Session_Invitation_ID' => $acceptedSessionInvitationIds, // List of Accepted Session Invitation IDs
-                'Accepted_Session_Count' => $acceptedSessionCount, // Count of Accepted Session Invitations
+                'Accepted_Session_Count' => $acceptedSessionCount, // Count of Accepted Session IDs
                 '1_Prior_Session' => $responseSessions['1_Prior_Session'], // Most recent prior session
                 '2_Prior_Session' => $responseSessions['2_Prior_Session'],
                 '3_Prior_Session' => $responseSessions['3_Prior_Session'],
@@ -787,10 +790,7 @@ class SessionGameController extends Controller
             return response()->json(['error' => $e->getMessage()], 500);
         }
     }
-     
-
-
-
+    
 public function getSessionInfoByPlayerInfoId($playerInfoId)
 {
     $players = Player::where('PlayerInfo_ID', $playerInfoId)
