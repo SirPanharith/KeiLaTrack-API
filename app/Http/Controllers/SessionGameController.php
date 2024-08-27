@@ -716,15 +716,15 @@ class SessionGameController extends Controller
                 ],
             ];
     
-            // Get all sessions the player participated in along with their Player_ID and PlayerInfo_ID
+            // Get all sessions the player participated in along with their Player_ID, PlayerInfo_ID, and Response_ID
             $playerSessions = SessionInvitation::where('PlayerInfo_ID', $player['PlayerInfo_ID'])
-                ->where('Response_ID', 1)
-                ->get(['Session_ID', 'PlayerInfo_ID'])
+                ->get(['Session_ID', 'PlayerInfo_ID', 'Response_ID'])
                 ->map(function ($invitation) use ($playerId) {
                     return [
                         'Session_ID' => $invitation->Session_ID,
                         'Player_ID' => $playerId,
                         'PlayerInfo_ID' => $invitation->PlayerInfo_ID,
+                        'Response_ID' => $invitation->Response_ID,
                     ];
                 });
     
@@ -779,7 +779,7 @@ class SessionGameController extends Controller
                 '1_Prior_Session' => $responseSessions['1_Prior_Session'], // Most recent prior session
                 '2_Prior_Session' => $responseSessions['2_Prior_Session'],
                 '3_Prior_Session' => $responseSessions['3_Prior_Session'],
-                'All_Player_Sessions' => $playerSessions, // Include the list of all Session_IDs with Player_ID and PlayerInfo_ID
+                'All_Player_Sessions' => $playerSessions, // Include the list of all Session_IDs with Player_ID, PlayerInfo_ID, and Response_ID
             ]);
         } catch (\Exception $e) {
             // Handle or log the exception
