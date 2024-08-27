@@ -82,7 +82,7 @@ class TeamInvitationController extends Controller
     ]);
 
     // Manually set the base URL to 0.0.0.0:8000
-    $baseUrl = 'http://143.198.209.104';
+    $baseUrl = 'http://127.0.0.1:8000';
     // Generate the unique link
     $link = $baseUrl . '/accept-invitation/' . $invitationToken;
 

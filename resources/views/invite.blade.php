@@ -24,14 +24,18 @@
         }
         .input-group input,
         .input-group select {
-            background-color: transparent;
+            background-color: #388E3C; /* Green background */
+            color: white; /* White text */
             border: none;
             outline: none;
-            color: white;
+            padding: 0.5rem;
             width: 100%;
+            border-radius: 5px;
+            appearance: none;
         }
-        .input-group input::placeholder {
-            color: rgba(255, 255, 255, 0.7);
+        .input-group select option {
+            background-color: #388E3C; /* Green background for options */
+            color: white; /* White text for options */
         }
         .input-group:hover {
             background-color: rgba(255, 255, 255, 0.3);
