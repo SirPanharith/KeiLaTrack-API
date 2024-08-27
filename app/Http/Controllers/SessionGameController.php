@@ -631,93 +631,52 @@ class SessionGameController extends Controller
             ->where('Player_ID', $playerId)
             ->get(['HomeAssist_ID', 'Session_ID', 'Player_ID', 'ManualPlayer_ID']);
 
-        // Get all sessions the player has participated in with Response_ID = 1
-        $allSessions = SessionGame::whereHas('sessionInvitations', function ($query) use ($player) {
+        // Get all sessions where the player has participated (Response_ID = 1) before the current session
+        $priorSessions = SessionGame::whereHas('sessionInvitations', function ($query) use ($player) {
             $query->where('PlayerInfo_ID', $player['PlayerInfo_ID'])
                   ->where('Response_ID', 1); // Only include sessions where the player accepted the invitation
-        })->get()->map(function ($session) use ($playerId) {
-            // Calculate total goals for this session
-            $totalGoals = HomeScore::where('Session_ID', $session->Session_ID)
-                ->where('Player_ID', $playerId)
-                ->count();
+        })->where(function ($query) use ($sessionGame) {
+            $query->where('Session_Date', '<', $sessionGame->Session_Date)
+                  ->orWhere(function ($query) use ($sessionGame) {
+                      $query->where('Session_Date', $sessionGame->Session_Date)
+                            ->where('Session_Time', '<', $sessionGame->Session_Time);
+                  });
+        })->orderBy('Session_Date', 'desc')
+          ->orderBy('Session_Time', 'desc')
+          ->take(3) // Get the last 3 prior sessions
+          ->get();
 
-            // Calculate total assists for this session
-            $totalAssists = HomeAssist::where('Session_ID', $session->Session_ID)
-                ->where('Player_ID', $playerId)
-                ->count();
-
-            // Get total duration for the player in this session and format it to MM:SS
-            $totalDuration = MatchSummary::where('Session_ID', $session->Session_ID)
-                ->where('Player_ID', $playerId)
-                ->value('Total_Duration') ?? '00:00:00';
-
-            // Convert the duration to seconds
-            $durationInSeconds = strtotime($totalDuration) - strtotime('TODAY');
-
-            // Format the duration to MM:SS
-            $formattedDuration = gmdate('i:s', $durationInSeconds);
-
-            return [
-                'Session_ID' => $session->Session_ID,
-                'Session_Date' => $session->Session_Date,
-                'Session_Time' => $session->Session_Time,
-                'Total_Goals' => $totalGoals,
-                'Total_Assists' => $totalAssists,
-                'Total_Duration' => $formattedDuration,
-            ];
-        });
-
-        // Filter sessions to only include those before the current session
-        $priorSessions = $allSessions->filter(function ($session) use ($sessionGame) {
-            return $session['Session_Date'] < $sessionGame->Session_Date ||
-                   ($session['Session_Date'] == $sessionGame->Session_Date && $session['Session_Time'] < $sessionGame->Session_Time);
-        });
-
-        // Sort the prior sessions by date and time, most recent on top
-        $sortedPriorSessions = $priorSessions->sortByDesc(function ($session) {
-            return $session['Session_Date'] . ' ' . $session['Session_Time'];
-        })->values(); // Re-index the array
-
-        // Get the last 3 prior sessions
-        $threePriorSessions = $sortedPriorSessions->take(3);
-
-        // If there are less than 3 sessions, fill the remaining slots only if data exists
-        while ($threePriorSessions->count() < 3) {
-            if ($threePriorSessions->isEmpty()) {
-                break;
+        // If there are less than 3 prior sessions, fill the remaining slots with placeholders
+        $responseSessions = [];
+        for ($i = 0; $i < 3; $i++) {
+            if (isset($priorSessions[$i])) {
+                $responseSessions["{$i + 1}_Prior_Session"] = [
+                    'Session_ID' => $priorSessions[$i]->Session_ID,
+                    'Session_Date' => $priorSessions[$i]->Session_Date,
+                    'Session_Time' => $priorSessions[$i]->Session_Time,
+                    'Total_Goals' => HomeScore::where('Session_ID', $priorSessions[$i]->Session_ID)
+                                               ->where('Player_ID', $playerId)
+                                               ->count(),
+                    'Total_Assists' => HomeAssist::where('Session_ID', $priorSessions[$i]->Session_ID)
+                                                 ->where('Player_ID', $playerId)
+                                                 ->count(),
+                    'Total_Duration' => gmdate('i:s', strtotime(
+                        MatchSummary::where('Session_ID', $priorSessions[$i]->Session_ID)
+                                    ->where('Player_ID', $playerId)
+                                    ->value('Total_Duration') ?? '00:00:00') - strtotime('TODAY')
+                    ),
+                ];
+            } else {
+                $responseSessions["{$i + 1}_Prior_Session"] = [
+                    'Session_ID' => 'N/A',
+                    'Session_Date' => '----------------',
+                    'Session_Time' => 'N/A',
+                    'Total_Goals' => '----',
+                    'Total_Assists' => '----',
+                    'Total_Duration' => '-------',
+                ];
             }
-
-            $threePriorSessions->push([]);
         }
-
-        // Structure the response as 1_Prior_Session, 2_Prior_Session, and 3_Prior_Session
-        $responseSessions = [
-            '1_Prior_Session' => $threePriorSessions->get(0) ?: [
-                'Session_ID' => 'N/A',
-                'Session_Date' => '----------------',
-                'Session_Time' => 'N/A',
-                'Total_Goals' => '----',
-                'Total_Assists' => '----',
-                'Total_Duration' => '-------',
-            ],
-            '2_Prior_Session' => $threePriorSessions->get(1) ?: [
-                'Session_ID' => 'N/A',
-                'Session_Date' => '----------------',
-                'Session_Time' => 'N/A',
-                'Total_Goals' => '----',
-                'Total_Assists' => '----',
-                'Total_Duration' => '-------',
-            ],
-            '3_Prior_Session' => $threePriorSessions->get(2) ?: [
-                'Session_ID' => 'N/A',
-                'Session_Date' => '----------------',
-                'Session_Time' => 'N/A',
-                'Total_Goals' => '----',
-                'Total_Assists' => '----',
-                'Total_Duration' => '-------',
-            ],
-        ];
-        
 
         // Get the first setting
         $setting = $sessionGame->settings->first();
@@ -747,7 +706,7 @@ class SessionGameController extends Controller
         $formattedDuration = gmdate('i:s', $durationInSeconds);
 
         // Return the response
-        return response()->json([
+        return response()->json(array_merge([
             'Session_ID' => $sessionGame->Session_ID,
             'Session_Date' => $sessionGame->Session_Date,
             'Session_Time' => $sessionGame->Session_Time,
@@ -767,10 +726,7 @@ class SessionGameController extends Controller
             'Team_Name' => $teamName,
             'Session_Location' => $sessionGame->Session_Location,
             'Total_Duration' => $formattedDuration, // Include the total duration in MM:SS format
-            '1_Prior_Session' => $responseSessions['1_Prior_Session'], // Most recent prior session
-            '2_Prior_Session' => $responseSessions['2_Prior_Session'],
-            '3_Prior_Session' => $responseSessions['3_Prior_Session'],
-        ]);
+        ], $responseSessions));
     } catch (\Exception $e) {
         // Handle or log the exception
         return response()->json(['error' => $e->getMessage()], 500);
