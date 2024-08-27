@@ -615,6 +615,7 @@ class SessionGameController extends Controller
         })->map(function ($player) {
             return [
                 'Player_ID' => $player->Player_ID,
+                'PlayerInfo_ID' => $player->PlayerInfo_ID,
                 'Player_Name' => $player->playerInfo->Player_Name ?? 'N/A',
                 'PrimaryPosition' => $player->primaryPosition->Position ?? 'N/A',
                 'SecondaryPosition' => $player->secondaryPosition->Position ?? 'N/A',
@@ -752,6 +753,7 @@ class SessionGameController extends Controller
             'Side_ID' => $setting->Side_ID ?? 'N/A',
             'TotalPlayerPerSide' => $TotalPlayerPerSide,
             'Player_ID' => $player['Player_ID'],
+            'PlayerInfo_ID' => $player['PlayerInfo_ID'],
             'Player_Name' => $player['Player_Name'],
             'PrimaryPosition' => $player['PrimaryPosition'],
             'SecondaryPosition' => $player['SecondaryPosition'],
@@ -773,6 +775,7 @@ class SessionGameController extends Controller
         return response()->json(['error' => $e->getMessage()], 500);
     }
 }
+
 
 
     
