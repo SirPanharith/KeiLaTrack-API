@@ -77,14 +77,18 @@ class TeamController extends Controller
     public function getTeamsByHost($hostId)
     {
         // Get teams with player and session game counts
-        $teams = Team::withCount(['players', 'sessionGames'])
-            ->where('Host_ID', $hostId)
-            ->get(['Team_ID', 'Team_Name']);
+        $teams = Team::withCount(['players', 'sessionGames' => function ($query) {
+            $query->where('SessionStatus_ID', 1); // Filter session games with SessionStatus_ID = 1
+        }])
+        ->where('Host_ID', $hostId)
+        ->get(['Team_ID', 'Team_Name']);
 
         // Loop through each team to calculate additional details
         $formattedTeams = $teams->map(function ($team) {
-            // Retrieve all session games for the team
-            $sessionGames = SessionGame::where('Team_ID', $team->Team_ID)->get();
+            // Retrieve only session games for the team where SessionStatus_ID = 1
+            $sessionGames = SessionGame::where('Team_ID', $team->Team_ID)
+                ->where('SessionStatus_ID', 1) // Filter by SessionStatus_ID = 1
+                ->get();
 
             $winCount = 0;  // Initialize win counter
             $loseCount = 0; // Initialize lose counter
@@ -111,8 +115,6 @@ class TeamController extends Controller
 
                 return [
                     'Session_ID' => $sessionGame->Session_ID,
-                    'Session_Total_Goals' => $sessionTotalGoals,
-                    'ManualAway_Score' => $manualAwayScore,
                     'Result' => $result, // Add the result field
                 ];
             });
