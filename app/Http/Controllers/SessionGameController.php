@@ -629,7 +629,7 @@ class SessionGameController extends Controller
                 ->where('Player_ID', $playerId)
                 ->get(['HomeAssist_ID', 'Session_ID', 'Player_ID', 'ManualPlayer_ID']);
     
-            // Get all sessions where the player has participated with Response_ID = 1
+            // Get all sessions the player has participated in with Response_ID = 1
             $allSessions = SessionGame::whereHas('sessionInvitations', function ($query) use ($player) {
                 $query->where('PlayerInfo_ID', $player['PlayerInfo_ID'])
                       ->where('Response_ID', 1); // Only include sessions where the player accepted the invitation
@@ -716,14 +716,15 @@ class SessionGameController extends Controller
                 ],
             ];
     
-            // Get all session IDs where the player has accepted the invitation
-            $allAcceptedSessions = SessionInvitation::where('PlayerInfo_ID', $player['PlayerInfo_ID'])
+            // Get all sessions the player participated in along with their Player_ID and PlayerInfo_ID
+            $playerSessions = SessionInvitation::where('PlayerInfo_ID', $player['PlayerInfo_ID'])
                 ->where('Response_ID', 1)
-                ->pluck('Session_ID')
-                ->map(function ($sessionId) use ($player) {
+                ->get(['Session_ID', 'PlayerInfo_ID'])
+                ->map(function ($invitation) use ($playerId) {
                     return [
-                        'Session_ID' => $sessionId,
-                        'Player_ID' => $player['Player_ID']
+                        'Session_ID' => $invitation->Session_ID,
+                        'Player_ID' => $playerId,
+                        'PlayerInfo_ID' => $invitation->PlayerInfo_ID,
                     ];
                 });
     
@@ -778,7 +779,7 @@ class SessionGameController extends Controller
                 '1_Prior_Session' => $responseSessions['1_Prior_Session'], // Most recent prior session
                 '2_Prior_Session' => $responseSessions['2_Prior_Session'],
                 '3_Prior_Session' => $responseSessions['3_Prior_Session'],
-                'All_Accepted_Sessions' => $allAcceptedSessions->values() // Add the list of all accepted sessions with Player_ID
+                'All_Player_Sessions' => $playerSessions, // Include the list of all Session_IDs with Player_ID and PlayerInfo_ID
             ]);
         } catch (\Exception $e) {
             // Handle or log the exception
