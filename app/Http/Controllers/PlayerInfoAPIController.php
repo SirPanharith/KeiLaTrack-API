@@ -230,43 +230,41 @@ class PlayerInfoAPIController extends Controller
 
 
     public function updatePlayerCredentials(Request $request, $id)
-{
-    $request->validate([
-        'Player_Name' => 'nullable|string|max:255',
-        'current_password' => 'nullable|string',
-        'new_password' => 'nullable|string|min:8|required_with:current_password',
-        'new_password_confirmation' => 'nullable|string|same:new_password', // Add this line to validate that the confirmation matches
-    ]);
+    {
+        $request->validate([
+            'Player_Name' => 'nullable|string|max:255',
+            'current_password' => 'nullable|string',
+            'new_password' => 'nullable|string|min:8|required_with:current_password',
+        ]);
 
-    $player = PlayerInfo::find($id);
+        $player = PlayerInfo::find($id);
 
-    if (!$player) {
-        return response()->json(['success' => false, 'message' => 'Player not found'], 404);
-    }
-
-    // Check if the current password matches
-    if ($request->filled('current_password') && $request->filled('new_password')) {
-        if (!Hash::check($request->current_password, $player->Player_Password)) {
-            return response()->json(['success' => false, 'message' => 'Current password is incorrect'], 400);
+        if (!$player) {
+            return response()->json(['success' => false, 'message' => 'Player not found'], 404);
         }
-        // Update player password if new password is provided and confirmed
-        $player->Player_Password = Hash::make($request->new_password);
+
+        // Check if the current password matches
+        if ($request->filled('current_password') && $request->filled('new_password')) {
+            if (!Hash::check($request->current_password, $player->Player_Password)) {
+                return response()->json(['success' => false, 'message' => 'Current password is incorrect'], 400);
+            }
+            // Update player password if new password is provided
+            $player->Player_Password = Hash::make($request->new_password);
+        }
+
+        // Update player name if provided
+        if ($request->filled('Player_Name')) {
+            $player->Player_Name = $request->Player_Name;
+        }
+
+        $player->save();
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Player information updated successfully',
+            'Player_Name' => $player->Player_Name,
+        ], 200);
     }
-
-    // Update player name if provided
-    if ($request->filled('Player_Name')) {
-        $player->Player_Name = $request->Player_Name;
-    }
-
-    $player->save();
-
-    return response()->json([
-        'success' => true,
-        'message' => 'Player information updated successfully',
-        'Player_Name' => $player->Player_Name,
-    ], 200);
-}
-
 
 
 
