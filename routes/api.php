@@ -237,6 +237,7 @@ Route::post('/create-checkout-session', [PaymentController::class, 'createChecko
 Route::get('/payment/success/{PlayerInfo_ID}', [PaymentController::class, 'success'])->name('payment.success');
 Route::get('/payment/cancel/{PlayerInfo_ID}', [PaymentController::class, 'cancel'])->name('cancel');
 Route::post('/payment/cancel', [PaymentController::class, 'cancel'])->name('payment.cancel');
+Route::get('/player/subscription/{PlayerInfo_ID}', [PaymentController::class, 'showSubscriptionInfoPlayer'])->name('player.subscription.show');
 
 Route::post('/create-checkout-session-host', [PaymentController::class, 'createCheckoutSessionHost'])->name('payment.createCheckoutSessionHost');
 Route::get('/payment/success-host/{Host_ID}', [PaymentController::class, 'successHost'])->name('payment.successHost');
