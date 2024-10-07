@@ -18,6 +18,9 @@ class Host extends Model
         'Host_Email',
         'Host_Password',
         'Host_Image',
+        'AccountStatus_ID',
+        'FreeTrial_ID',
+        'subscription_id',
     ];
 
     // Define the relationship to Team
@@ -25,4 +28,17 @@ class Host extends Model
     {
         return $this->hasMany(Team::class, 'Host_ID', 'Host_ID');
     }
+    
+    // Define the relationship to AccountStatus (each host belongs to one account status)
+    public function accountStatus()
+    {
+        return $this->belongsTo(AccountStatus::class, 'AccountStatus_ID', 'AccountStatus_ID');
+    }
+
+    // Define the relationship to FreeTrial (each host belongs to one free trial)
+    public function freeTrial()
+    {
+        return $this->belongsTo(FreeTrial::class, 'FreeTrial_ID', 'FreeTrial_ID');
+    }
+
 }

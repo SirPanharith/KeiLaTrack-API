@@ -19,6 +19,9 @@ class PlayerInfo extends Model
         'Player_Email',
         'Player_Password',
         'PlayerInfo_Image',
+        'AccountStatus_ID',
+        'FreeTrial_ID',
+        'subscription_id',
     ];
 
     public function sessionGames()
@@ -46,5 +49,15 @@ class PlayerInfo extends Model
     public function getPlayerInfoImageAttribute($value)
     {
         return $value ? Storage::disk('spaces')->url($value) : null;
+    }
+
+    public function accountStatus()
+    {
+        return $this->belongsTo(AccountStatus::class, 'AccountStatus_ID', 'AccountStatus_ID');
+    }
+
+    public function freeTrial()
+    {
+        return $this->belongsTo(FreeTrial::class, 'FreeTrial_ID', 'FreeTrial_ID');
     }
 }

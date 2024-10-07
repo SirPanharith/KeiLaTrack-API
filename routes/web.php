@@ -7,6 +7,7 @@ use App\Http\Controllers\TeamInvitationController;
 use App\Http\Controllers\SessionGameController;
 use App\Http\Controllers\ForgotPasswordController;
 use Illuminate\Support\Facades\Mail;
+use App\Http\Controllers\PaymentController;
 
 /*
 |--------------------------------------------------------------------------
@@ -77,3 +78,8 @@ Route::get('/test-email', function () {
 
     return 'Email sent!';
 });
+
+// //payment API
+// Route::post('/create-checkout-session', [PaymentController::class, 'createCheckoutSession'])->name('checkout.session');
+// Route::get('/payment/success', [PaymentController::class, 'success'])->name('payment.success');
+// Route::get('/payment/cancel', [PaymentController::class, 'cancel'])->name('payment.cancel');

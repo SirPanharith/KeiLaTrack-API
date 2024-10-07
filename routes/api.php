@@ -21,6 +21,7 @@ use App\Http\Controllers\AuthController;
 use App\Http\Controllers\HomeAssistController;
 use App\Http\Controllers\PlayerNoteController;
 use App\Http\Controllers\ForgotPasswordController;
+use App\Http\Controllers\PaymentController;
 
 
 /*
@@ -230,6 +231,16 @@ Route::post('/send-session-invitation', [SessionGameController::class, 'sendSess
 
 //Display the Player that Not yet been inviting to the team
 Route::get('/session/{sessionId}/players-without-invitation', [SessionGameController::class, 'getPlayersWithoutSessionInvitation']);
+
+//payment API
+Route::post('/create-checkout-session', [PaymentController::class, 'createCheckoutSession'])->name('checkout.session');
+Route::get('/payment/success/{PlayerInfo_ID}', [PaymentController::class, 'success'])->name('payment.success');
+Route::get('/payment/cancel/{PlayerInfo_ID}', [PaymentController::class, 'cancel'])->name('cancel');
+Route::post('/payment/cancel', [PaymentController::class, 'cancel'])->name('payment.cancel');
+
+Route::post('/create-checkout-session-host', [PaymentController::class, 'createCheckoutSessionHost'])->name('payment.createCheckoutSessionHost');
+Route::get('/payment/success-host/{Host_ID}', [PaymentController::class, 'successHost'])->name('payment.successHost');
+Route::post('/payment/cancel-host', [PaymentController::class, 'cancelHost'])->name('payment.cancelHost');
 
 
 
