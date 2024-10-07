@@ -241,6 +241,9 @@ Route::post('/payment/cancel', [PaymentController::class, 'cancel'])->name('paym
 Route::post('/create-checkout-session-host', [PaymentController::class, 'createCheckoutSessionHost'])->name('payment.createCheckoutSessionHost');
 Route::get('/payment/success-host/{Host_ID}', [PaymentController::class, 'successHost'])->name('payment.successHost');
 Route::post('/payment/cancel-host', [PaymentController::class, 'cancelHost'])->name('payment.cancelHost');
+Route::get('/host/subscription/{Host_ID}', [PaymentController::class, 'showSubscriptionInfo'])->name('host.subscription.info');
+
+
 
 
 

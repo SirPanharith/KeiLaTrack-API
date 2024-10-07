@@ -355,5 +355,56 @@ class PaymentController extends Controller
             return response()->json(['message' => 'An error occurred: ' . $e->getMessage()], 500);
         }
     }
+
+    // Function to show subscription information based on Host_ID
+    public function showSubscriptionInfo($Host_ID)
+    {
+        // Set your Stripe secret key
+        Stripe::setApiKey(env('STRIPE_SECRET'));
+
+        // Find the host using the provided Host_ID
+        $host = Host::find($Host_ID);
+
+        if (!$host) {
+            return response()->json(['message' => 'Host not found'], 404);
+        }
+
+        if (!$host->subscription_id) {
+            return response()->json(['message' => 'No subscription found for this host'], 404);
+        }
+
+        // Retrieve the subscription from Stripe using the subscription_id
+        try {
+            $subscription = \Stripe\Subscription::retrieve($host->subscription_id);
+        } catch (\Exception $e) {
+            return response()->json(['message' => 'Error retrieving subscription: ' . $e->getMessage()], 500);
+        }
+
+        // Correctly identify the plan by comparing the price ID from the Stripe subscription
+        $priceId = $subscription->items->data[0]->price->id;  // Fetch the price ID from the subscription
+
+        // Replace 'your_monthly_price_id' and 'your_yearly_price_id' with actual Stripe price IDs
+        $monthlyPriceId = 'price_1Q6UVYP7DToSd1aIBwhZBzSz';  // Your actual monthly price ID
+        $yearlyPriceId = 'price_1Q6UWRP7DToSd1aIRhaWYDtG';  // Your actual yearly price ID
+
+        $plan = null;
+        if ($priceId === $monthlyPriceId) {
+            $plan = 'monthly';
+        } elseif ($priceId === $yearlyPriceId) {
+            $plan = 'yearly';
+        }
+
+        // Get the next payment date from the Stripe subscription
+        $nextPaymentDate = date('Y-m-d', $subscription->current_period_end);
+
+        // Return the subscription info as a JSON response
+        return response()->json([
+            'Host_ID' => $host->Host_ID,
+            'Host_Name' => $host->Host_Name,
+            'AccountStatus_ID' => $host->AccountStatus_ID,
+            'Plan' => $plan,
+            'Next_Payment_Date' => $nextPaymentDate
+        ]);
+    }
     
 }
