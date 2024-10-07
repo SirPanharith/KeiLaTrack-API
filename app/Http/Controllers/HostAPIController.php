@@ -97,7 +97,8 @@ class HostAPIController extends Controller
             'Host_ID' => $host->Host_ID,
             'Host_Name' => $host->Host_Name,
             'Host_Email' => $host->Host_Email,
-            'Host_Image' => $fullImageUrl, // Return the full image URL
+            'Host_Image' => $fullImageUrl,
+            'AccountStatus_ID' => $host->AccountStatus_ID,
             'created_at' => $host->created_at,
             'updated_at' => $host->updated_at,
         ]);
