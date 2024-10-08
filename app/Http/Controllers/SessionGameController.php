@@ -10,6 +10,7 @@ use App\Models\SessionInvitation;
 use App\Models\HomeAssist;
 use App\Models\ManualPlayer;
 use App\Models\PlayerInfo;
+use App\Models\AccountStatus;
 use App\Models\MatchSummary;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
@@ -789,143 +790,148 @@ class SessionGameController extends Controller
     }
     
     
-public function getSessionInfoByPlayerInfoId($playerInfoId)
-{
-    $players = Player::where('PlayerInfo_ID', $playerInfoId)
-        ->with(['playerInfo', 'team', 'primaryPosition', 'secondaryPosition'])
-        ->get();
-
-    if ($players->isEmpty()) {
-        $playerInfo = PlayerInfo::find($playerInfoId);
-
-        return response()->json([
-            'Player_Name' => $playerInfo->Player_Name,
-            'PlayerInfo_ID' => $playerInfo->PlayerInfo_ID,
-            'Data' => [],
-        ]);
-    }
-
-    $playerInfo = [
-        'PlayerInfo_ID' => $playerInfoId,
-        'Player_Name' => $players->first()->playerInfo->Player_Name ?? 'N/A',
-    ];
-
-    $teamData = [];
-
-    foreach ($players as $player) {
-        // Only include sessions where the player has accepted the invitation
-        $sessions = SessionGame::where('Team_ID', $player->Team_ID)
-            ->where('SessionStatus_ID', 1) // Filter sessions by SessionStatus_ID = 1
-            ->whereHas('sessionInvitations', function ($query) use ($playerInfoId) {
-                $query->where('PlayerInfo_ID', $playerInfoId)
-                      ->where('Response_ID', 1); // Include only accepted invitations
-            })
-            ->with(['settings', 'homeScores', 'manualPlayers', 'homeScores.homeAssist'])
+    public function getSessionInfoByPlayerInfoId($playerInfoId)
+    {
+        $players = Player::where('PlayerInfo_ID', $playerInfoId)
+            ->with(['playerInfo', 'team', 'primaryPosition', 'secondaryPosition', 'playerInfo.accountStatus']) // Load account status
             ->get();
-
-        if ($sessions->isEmpty()) {
-            continue;
+    
+        if ($players->isEmpty()) {
+            $playerInfo = PlayerInfo::with('accountStatus')->find($playerInfoId); // Load account status for playerInfo
+    
+            return response()->json([
+                'Player_Name' => $playerInfo->Player_Name,
+                'PlayerInfo_ID' => $playerInfo->PlayerInfo_ID,
+                'AccountStatus_ID' => $playerInfo->accountStatus->AccountStatus_ID ?? null, // Add AccountStatus_ID here
+                'Data' => [],
+            ]);
         }
-
-        $sessionDetails = [];
-        $totalGames = 0;
-        $totalWins = 0;
-        $totalLoses = 0;
-        $totalDraws = 0;
-        $totalGoalsForTeam = 0;
-        $totalAssistsForTeam = 0;
-        $totalTimePlayedForTeam = 0; // To be accumulated in seconds
-
-        foreach ($sessions as $session) {
-            $totalGames++;
-
-            $sessionTotalGoals = $session->homeScores->count();
-            $manualAwayScore = $session->ManualAway_Score ?? 0;
-            $manualAwayName = $session->ManualAway_Name ?? 'N/A';
-            $result = $this->calculateMatchResult($sessionTotalGoals, $manualAwayScore);
-
-            if ($result === 'Win') {
-                $totalWins++;
-            } elseif ($result === 'Lose') {
-                $totalLoses++;
-            } else {
-                $totalDraws++;
+    
+        $player = $players->first(); // Get the first player
+        $playerInfo = [
+            'PlayerInfo_ID' => $playerInfoId,
+            'Player_Name' => $player->playerInfo->Player_Name ?? 'N/A',
+            'AccountStatus_ID' => $player->playerInfo->accountStatus->AccountStatus_ID ?? null, // Include AccountStatus_ID in the response
+        ];
+    
+        $teamData = [];
+    
+        foreach ($players as $player) {
+            // Only include sessions where the player has accepted the invitation
+            $sessions = SessionGame::where('Team_ID', $player->Team_ID)
+                ->where('SessionStatus_ID', 1) // Filter sessions by SessionStatus_ID = 1
+                ->whereHas('sessionInvitations', function ($query) use ($playerInfoId) {
+                    $query->where('PlayerInfo_ID', $playerInfoId)
+                          ->where('Response_ID', 1); // Include only accepted invitations
+                })
+                ->with(['settings', 'homeScores', 'manualPlayers', 'homeScores.homeAssist'])
+                ->get();
+    
+            if ($sessions->isEmpty()) {
+                continue;
             }
-
-            $playerTotalGoals = $session->homeScores
-                ->where('Player_ID', $player->Player_ID)
-                ->count();
-
-            $playerTotalAssists = $session->homeScores
-                ->where('homeAssist.Player_ID', $player->Player_ID)
-                ->count();
-
-            $totalGoalsForTeam += $playerTotalGoals;
-            $totalAssistsForTeam += $playerTotalAssists;
-
-            // Fetch the correct Total_Duration from MatchSummary
-            $matchSummary = MatchSummary::where('Session_ID', $session->Session_ID)
-                ->where('Player_ID', $player->Player_ID)
-                ->first();
-
-            $durationInSeconds = $matchSummary ? strtotime($matchSummary->Total_Duration) - strtotime('TODAY') : 0;
-            $totalTimePlayedForTeam += $durationInSeconds;
-
-            $formattedDuration = gmdate('H:i:s', $durationInSeconds);
-
-            $goalDetails = $session->homeScores->map(function ($homeScore) {
-                return [
-                    'HomeScore_ID' => $homeScore->HomeScore_ID,
-                    'Goal_Player_ID' => $homeScore->Player_ID,
-                    'ManualPlayer_ID' => $homeScore->ManualPlayer_ID,
-                    'HomeAssist_ID' => $homeScore->HomeAssist_ID,
-                    'Assist' => [
-                        'Assist_Player_ID' => $homeScore->homeAssist->Player_ID ?? null,
-                        'ManualPlayer_ID' => $homeScore->homeAssist->ManualPlayer_ID ?? null,
-                        'Session_ID' => $homeScore->homeAssist->Session_ID ?? null,
-                    ]
+    
+            $sessionDetails = [];
+            $totalGames = 0;
+            $totalWins = 0;
+            $totalLoses = 0;
+            $totalDraws = 0;
+            $totalGoalsForTeam = 0;
+            $totalAssistsForTeam = 0;
+            $totalTimePlayedForTeam = 0; // To be accumulated in seconds
+    
+            foreach ($sessions as $session) {
+                $totalGames++;
+    
+                $sessionTotalGoals = $session->homeScores->count();
+                $manualAwayScore = $session->ManualAway_Score ?? 0;
+                $manualAwayName = $session->ManualAway_Name ?? 'N/A';
+                $result = $this->calculateMatchResult($sessionTotalGoals, $manualAwayScore);
+    
+                if ($result === 'Win') {
+                    $totalWins++;
+                } elseif ($result === 'Lose') {
+                    $totalLoses++;
+                } else {
+                    $totalDraws++;
+                }
+    
+                $playerTotalGoals = $session->homeScores
+                    ->where('Player_ID', $player->Player_ID)
+                    ->count();
+    
+                $playerTotalAssists = $session->homeScores
+                    ->where('homeAssist.Player_ID', $player->Player_ID)
+                    ->count();
+    
+                $totalGoalsForTeam += $playerTotalGoals;
+                $totalAssistsForTeam += $playerTotalAssists;
+    
+                // Fetch the correct Total_Duration from MatchSummary
+                $matchSummary = MatchSummary::where('Session_ID', $session->Session_ID)
+                    ->where('Player_ID', $player->Player_ID)
+                    ->first();
+    
+                $durationInSeconds = $matchSummary ? strtotime($matchSummary->Total_Duration) - strtotime('TODAY') : 0;
+                $totalTimePlayedForTeam += $durationInSeconds;
+    
+                $formattedDuration = gmdate('H:i:s', $durationInSeconds);
+    
+                $goalDetails = $session->homeScores->map(function ($homeScore) {
+                    return [
+                        'HomeScore_ID' => $homeScore->HomeScore_ID,
+                        'Goal_Player_ID' => $homeScore->Player_ID,
+                        'ManualPlayer_ID' => $homeScore->ManualPlayer_ID,
+                        'HomeAssist_ID' => $homeScore->HomeAssist_ID,
+                        'Assist' => [
+                            'Assist_Player_ID' => $homeScore->homeAssist->Player_ID ?? null,
+                            'ManualPlayer_ID' => $homeScore->homeAssist->ManualPlayer_ID ?? null,
+                            'Session_ID' => $homeScore->homeAssist->Session_ID ?? null,
+                        ]
+                    ];
+                });
+    
+                $sessionDetails[] = [
+                    'Session_ID' => $session->Session_ID,
+                    'Session_Date' => $session->Session_Date,
+                    'Session_Time' => $session->Session_Time,
+                    'ManualAway_Name' => $manualAwayName,
+                    'ManualAway_Score' => $manualAwayScore,
+                    'Session_Total_Goals' => $sessionTotalGoals,
+                    'Result' => $result,
+                    'Player_Total_Goals' => $playerTotalGoals,
+                    'Player_Total_Assists' => $playerTotalAssists,
+                    'Total_Duration' => $formattedDuration,
+                    'Goal_Details' => $goalDetails
                 ];
-            });
-
-            $sessionDetails[] = [
-                'Session_ID' => $session->Session_ID,
-                'Session_Date' => $session->Session_Date,
-                'Session_Time' => $session->Session_Time,
-                'ManualAway_Name' => $manualAwayName,
-                'ManualAway_Score' => $manualAwayScore,
-                'Session_Total_Goals' => $sessionTotalGoals,
-                'Result' => $result,
-                'Player_Total_Goals' => $playerTotalGoals,
-                'Player_Total_Assists' => $playerTotalAssists,
-                'Total_Duration' => $formattedDuration,
-                'Goal_Details' => $goalDetails
+            }
+    
+            $teamData[] = [
+                'Player_ID' => $player->Player_ID,
+                'PrimaryPosition_ID' => $player->PrimaryPosition_ID,
+                'PrimaryPosition' => $player->primaryPosition->Position ?? 'N/A',
+                'SecondaryPosition_ID' => $player->SecondaryPosition_ID,
+                'SecondaryPosition' => $player->secondaryPosition->Position ?? 'N/A',
+                'Team_Name' => $player->team->Team_Name ?? 'N/A',
+                'Total_Games' => $totalGames,
+                'Total_Wins' => $totalWins,
+                'Total_Loses' => $totalLoses,
+                'Total_Draws' => $totalDraws,
+                'Total_Goals_For_Team' => $totalGoalsForTeam,
+                'Total_Assists_For_Team' => $totalAssistsForTeam,
+                'Total_TimePlayed_For_Team' => gmdate('H:i:s', $totalTimePlayedForTeam),
+                'Sessions' => $sessionDetails
             ];
         }
-
-        $teamData[] = [
-            'Player_ID' => $player->Player_ID,
-            'PrimaryPosition_ID' => $player->PrimaryPosition_ID,
-            'PrimaryPosition' => $player->primaryPosition->Position ?? 'N/A',
-            'SecondaryPosition_ID' => $player->SecondaryPosition_ID,
-            'SecondaryPosition' => $player->secondaryPosition->Position ?? 'N/A',
-            'Team_Name' => $player->team->Team_Name ?? 'N/A',
-            'Total_Games' => $totalGames,
-            'Total_Wins' => $totalWins,
-            'Total_Loses' => $totalLoses,
-            'Total_Draws' => $totalDraws,
-            'Total_Goals_For_Team' => $totalGoalsForTeam,
-            'Total_Assists_For_Team' => $totalAssistsForTeam,
-            'Total_TimePlayed_For_Team' => gmdate('H:i:s', $totalTimePlayedForTeam),
-            'Sessions' => $sessionDetails
-        ];
+    
+        return response()->json([
+            'PlayerInfo_ID' => $playerInfo['PlayerInfo_ID'],
+            'Player_Name' => $playerInfo['Player_Name'],
+            'AccountStatus_ID' => $playerInfo['AccountStatus_ID'], // Add AccountStatus_ID to the final response
+            'Data' => $teamData,
+        ]);
     }
-
-    return response()->json([
-        'PlayerInfo_ID' => $playerInfo['PlayerInfo_ID'],
-        'Player_Name' => $playerInfo['Player_Name'],
-        'Data' => $teamData,
-    ]);
-}
+    
 
 
 
